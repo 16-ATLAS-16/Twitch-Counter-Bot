@@ -1,4 +1,5 @@
 import os
+import sys
 from twitchio.ext import commands
 from requests import get
 from requests import delete
@@ -10,7 +11,7 @@ import dotenv
 
 dotenv.load_dotenv()
 
-#debug
+#define debug
 DEBUG = open("TWITCH_LOGFILE", 'a')
 DEBUG.close()
 
@@ -28,6 +29,7 @@ class debug():
 debug.write("\n", False)
 debug.write("@@@@@@@@@@@@@@@@ CODE: INIT SUCCESS @@@@@@@@@@@@@@@@")
 
+#setup helper function to write env variables
 def writeEnv(Settings=None):
     if Settings != None:
 
@@ -82,7 +84,7 @@ def writeEnv(Settings=None):
 
             
             
-
+#create a setup to write initial env variables. can be re-triggered as needed.
 def SetupScreen():
     channel = None
     botcap = 20
@@ -324,7 +326,7 @@ def SetupScreen():
             print("<<======------~~~~~~ SETUP ~~~~~~------======>>")
             print("\n")
             print("FINAL STEP! Congrats on making it :)")
-            print("Head to this website and click Authenticate: https://id.twitch.tv/oauth2/authorize?client_id=udejckrsxv14xdt43ut43sto8wc5c4&redirect_uri=http://localhost&response_type=token+id_token&scope=openid+channel:read:editors+channel:read:hype_train+channel:read:polls+channel:read:predictions+channel:read:redemptions+channel:read:subscriptions+moderation:read+user:edit+user:read:broadcast+user:read:email+user:read:follows+user:read:subscriptions+channel:moderate+chat:edit+chat:read+whispers:read+whispers:edit+channel:manage:polls")
+            print("Head to this website and click Authenticate: https://id.twitch.tv/oauth2/authorize?client_id=7583ak4tqsqbnpbdoypfpg2h0ie4tu&redirect_uri=http://localhost&response_type=token+id_token&scope=openid+channel:read:editors+channel:read:hype_train+channel:read:polls+channel:read:predictions+channel:read:redemptions+channel:read:subscriptions+moderation:read+user:edit+user:read:broadcast+user:read:email+user:read:follows+user:read:subscriptions+channel:moderate+chat:edit+chat:read+whispers:read+whispers:edit+channel:manage:polls")
             tkn = input("This should have redirected you to a localhost site.\nPaste the site URL here > ")
             tkn = tkn.split('/')[3].split('=')[1].split('&')[0]
             if len(tkn) == 30:
@@ -363,9 +365,11 @@ except FileNotFoundError:
         except Exception as e:
             print(str(e))
 
+            
+#all settings related code is found here.
 class settings():
     
-    def Load(file=None):
+    def Load(file=None): #this load notifies the user and writes to debug...
         'Imports custom settings struct from ENV or file specified'
 
         def LoadEnv(customFile=False, filepath=None):
@@ -403,17 +407,43 @@ class settings():
 
 
             try:
-                channel = os.environ["CHANNEL"]
-                bot_cap = os.environ["BOT_CAP"]
-                blacklist = os.environ["AUTO_BLACKLIST"]
-                blacklisted_words = os.environ["BLACKLISTED_WORDS"]
-                greeter = os.environ["GREETER_NAME"]
-                username_index = os.environ["GREETER_INDEX"]
-                welcome_marker = os.environ["WELCOME_MARKER"]
-                follow_time = os.environ["FOLLOWERS_TIME"]
-                tkn = os.environ["TKN"]
+
+                if sys.platform == 'win32':
+                    channel = os.environ["CHANNEL"]
+                    bot_cap = os.environ["BOT_CAP"]
+                    blacklist = os.environ["AUTO_BLACKLIST"]
+                    blacklisted_words = os.environ["BLACKLISTED_WORDS"]
+                    greeter = os.environ["GREETER_NAME"]
+                    username_index = os.environ["GREETER_INDEX"]
+                    welcome_marker = os.environ["WELCOME_MARKER"]
+                    follow_time = os.environ["FOLLOWERS_TIME"]
+                    tkn = os.environ["TKN"]
+
+                else:
+
+                    def find_setting(setting_name=None):
+                        all_settings = open('.env', 'r').read().split('\n')
+                        setting_to_return = None
+
+                        for setting in all_settings:
+                            if setting_name in setting:
+                                setting_to_return = setting.split('=')[1]
+                                break
+
+                        return setting_to_return
+
+
+                    channel = find_setting("CHANNEL")
+                    bot_cap = find_setting("BOT_CAP")
+                    blacklist = find_setting("AUTO_BLACKLIST")
+                    blacklisted_words = find_setting("BLACKLISTED_WORDS")
+                    greeter = find_setting("GREETER_NAME")
+                    username_index = find_setting("GREETER_INDEX")
+                    welcome_marker = find_setting("WELCOME_MARKER")
+                    follow_time = find_setting("FOLLOWERS_TIME")
+                    tkn = find_setting("TKN")
                     
-                debug.write("Successfully loaded settings:")
+                debug.write(f"(OS: {sys.platform} |> Successfully loaded settings:")
                     
                 Settings = {"Channel": channel,
                             "Bot Follow Cap": bot_cap,
@@ -465,17 +495,42 @@ class settings():
 
         return data
 
-    def silentLoad():
+    def silentLoad(): #... and this one doesn't.
 
-        channel = os.environ["CHANNEL"]
-        bot_cap = os.environ["BOT_CAP"]
-        blacklist = os.environ["AUTO_BLACKLIST"]
-        blacklisted_words = os.environ["BLACKLISTED_WORDS"]
-        greeter = os.environ["GREETER_NAME"]
-        username_index = os.environ["GREETER_INDEX"]
-        welcome_marker = os.environ["WELCOME_MARKER"]
-        follow_time = os.environ["FOLLOWERS_TIME"]
-        tkn = os.environ["TKN"]
+        if sys.platform == 'win32':
+            channel = os.environ["CHANNEL"]
+            bot_cap = os.environ["BOT_CAP"]
+            blacklist = os.environ["AUTO_BLACKLIST"]
+            blacklisted_words = os.environ["BLACKLISTED_WORDS"]
+            greeter = os.environ["GREETER_NAME"]
+            username_index = os.environ["GREETER_INDEX"]
+            welcome_marker = os.environ["WELCOME_MARKER"]
+            follow_time = os.environ["FOLLOWERS_TIME"]
+            tkn = os.environ["TKN"]
+
+        else:
+
+            def find_setting(setting_name=None):
+                all_settings = open('.env', 'r').read().split('\n')
+                setting_to_return = None
+
+                for setting in all_settings:
+                    if setting_name in setting:
+                        setting_to_return = setting.split('=')[1]
+                        break
+
+                return setting_to_return
+
+
+            channel = find_setting("CHANNEL")
+            bot_cap = find_setting("BOT_CAP")
+            blacklist = find_setting("AUTO_BLACKLIST")
+            blacklisted_words = find_setting("BLACKLISTED_WORDS")
+            greeter = find_setting("GREETER_NAME")
+            username_index = find_setting("GREETER_INDEX")
+            welcome_marker = find_setting("WELCOME_MARKER")
+            follow_time = find_setting("FOLLOWERS_TIME")
+            tkn = find_setting("TKN")
                     
         Settings = {"Channel": channel,
                     "Bot Follow Cap": bot_cap,
@@ -499,12 +554,12 @@ class settings():
 class Bot(commands.Bot):
     counter = 0
     botlist = []
-    ownerId = None
+    streamerID = None
 
-    Settings = settings.Load()
-    #print(settings.Import()
+    Settings = settings.Load() # load base settings. key names are the same as what's written to debug for the sake of not having to re-write the return value (yes I'm lazy in that way)
+
     channelToJoin = Settings.get("Channel")
-    bot_cap = int(Settings.get("Bot Follow Cap"))
+    bot_cap = int(Settings.get("Bot Fllow Cap"))
     blacklist = bool(Settings.get("Auto-Blacklist Bot Spam"))
     blacklisted_words = eval(Settings.get("Blacklisted Words/Phrases"))
     greeter_name = Settings.get("Bot to Read Welcome From")
@@ -513,7 +568,9 @@ class Bot(commands.Bot):
     follow_duration = Settings.get("Follower Only Time Upon Bot Trigger")
     client_id="udejckrsxv14xdt43ut43sto8wc5c4"
     token = Settings.get("Token")
-    ownerID = None
+
+    
+    streamerID = None
     prevage=''
     prevprevage=''
     
@@ -523,30 +580,26 @@ class Bot(commands.Bot):
 
         super().__init__(
     token=f"{self.token}",
-    client_id="udejckrsxv14xdt43ut43sto8wc5c4",
+    client_id="7583ak4tqsqbnpbdoypfpg2h0ie4tu",
     nick="crimsoneye16",
-    prefix="ab!ab!ab!ab!ab!ab!ab!ab!ab!",
+    prefix="<prefix goes here>",
     initial_channels=[f"#{self.channelToJoin}"]
 )
 
     async def event_ready(self):
         print("good to go")
         #try:
-        #    await self.get_channel(self.channelToJoin).send("Bot Ready!")
+        #    await self.get_channel(self.channelToJoin).send("Bot Ready!") <- optional and doesn't always work
         #except Exception as e:
         #    print(str(e))
 
         debug.write("====CHAT: LOG BEGIN====")
-        #'Called once when the bot goes online.'
-        #print(f"{os.environ['BOT_NICK']} is online!")
-        #ws = Bot._ws  # this is only needed to send messages within event_ready
-        #await ws.send_privmsg(os.environ['CHANNEL'], f"/me has landed!")
 
 
     #@bot.event
     async def event_message(self, ctx):
         
-        Settings = settings.silentLoad()
+        Settings = settings.silentLoad() # constantly updating settings via silent load allows for variables to be changed during runtime, however loading it before bot runs is crucial to make the bot run
         channelToJoin = Settings.get("Channel")
         bot_cap = int(Settings.get("Bot Follow Cap"))
         blacklist = bool(Settings.get("Auto-Blacklist Bot Spam"))
@@ -579,21 +632,21 @@ class Bot(commands.Bot):
             debug.write(f"{ctx.author.name}: {ctx.content}")
             print(f"{author.name}: {message.content}")
             
-            if author.name in self.botlist:
+            if author.name in self.botlist: # if any chatbot talks and they haven't been banned for whatever reason, silence them.
                 await ctx.channel.send(f"/timeout {author.name} 5000000")
                 debug.write(f"Timed out {author.name} (BOT USER) for 5000000 seconds")
 
-            for word in words:
+            for word in words: # simple blacklist because twitch doesn't let bots add blacklisted phrases (yet)
                 if word in blacklisted_words:
                     await channel.send(f"/timeout {author.name} 1")
                     await author.send(f"@{author.name} Some words in your message may have been blacklisted and thus your messages were removed.")
                     debug.write(f"Removed {ctx.author.name}'s messages for posting blacklisted words or phrases |> {word}")
                     break
             
-            if is_streamer:
-                self.ownerID = author.id
+            if is_streamer: # make sure to grab the streamer ID in case we poll for followers or make a poll via request.
+                self.streamerID = author.id
                     
-            if is_welcome:
+            if is_welcome: # triggers on user follow. once twitchio allows 
                 debug.write("~~~~User Follow Triggered~~~~")
 
                 user=words[int(user_index)]
@@ -615,7 +668,6 @@ class Bot(commands.Bot):
                             self.botlist.append(user)
                             debug.write(f"| - > Added {user} to botlist, user will be banned on bot raid trigger.", False)
                             self.counter += 1
-                            #print(f"{self.counter}, {bot_cap}")
 
                 if self.counter >= int(bot_cap):
                     debug.write("<<<<BOT RAID DETECTED>>>>")
@@ -691,7 +743,6 @@ class Bot(commands.Bot):
                 await channel.send("poll : Starts a poll. (moderator and above)")
 
             if "ab!poll" == words[0] and is_mod:
-                print(self.ownerID)
                 if len(words) == 6 or len(words) == 7:
                     try:
                         title = words[1]
@@ -706,9 +757,7 @@ class Bot(commands.Bot):
 
                         resp = post("https://api.twitch.tv/helix/polls", headers={"Authorization": f"Bearer {self.token}",
                                                                                  "Client-Id": f"{self.client_id}",
-                                                                                 "Content-Type": "application/json"}, json={"broadcaster_id": f"{self.ownerID}", "title": f"{title}", "choices": [{'title': choice_1}, {'title': choice_2}], "duration": dur})
-                        print(resp.content)#f"{self.ownerID}",#f"{title}",#f"{choices}",#f"{dur}"})
-                        print(resp.json()['id'])
+                                                                                 "Content-Type": "application/json"}, json={"broadcaster_id": f"{self.streamerID}", "title": f"{title}", "choices": [{'title': choice_1}, {'title': choice_2}], "duration": dur})
 
                     except ValueError:
                         await channel.send("Usage: ab!poll {title (string)} {choice 1 (string)} {choice 2 (string)} {duration (int)} {channel points vote (bool)} {channel point cost (int) [optional]}")
@@ -717,10 +766,10 @@ class Bot(commands.Bot):
                     await channel.send("Usage: ab!poll {title (string)} {choice 1 (string)} {choice 2 (string)} {duration (int)} {channel points vote (bool)} {channel point cost (int) [optional]}")
 
             if "ab!endpoll" == words[0] and is_mod:
-                resp = get(f"https://api.twitch.tv/helix/polls?broadcaster_id={self.ownerID}", headers={'Authorization': f"Bearer {self.token}", 'Client-Id': f"{self.client_id}"})
+                resp = get(f"https://api.twitch.tv/helix/polls?broadcaster_id={self.streamerID}", headers={'Authorization': f"Bearer {self.token}", 'Client-Id': f"{self.client_id}"})
                 poll_id = resp.content.decode()[16:52]
 
-                patch('https://api.twitch.tv/helix/polls', headers={"Authorization": f"Bearer {self.token}", "Client-Id": f"{self.client_id}", "Content-Type": "application/json"}, json={"broadcaster_id": f"{self.ownerID}", "id": f"{poll_id}", "status": "TERMINATED"})
+                patch('https://api.twitch.tv/helix/polls', headers={"Authorization": f"Bearer {self.token}", "Client-Id": f"{self.client_id}", "Content-Type": "application/json"}, json={"broadcaster_id": f"{self.streamerID}", "id": f"{poll_id}", "status": "TERMINATED"})
 
             if "ab!botFuncTest" == words[0] and is_creator:
                 await channel.send("All systems functional, debug successful.")
