@@ -1,0 +1,5 @@
+#generic requirements file
+
+twitchio>=2.0.0
+python-dotenv>=0.18.0
+requests>=2.26.0
