@@ -1,3 +1,4 @@
+#! /usr/bin/env python
 import os
 import sys
 from twitchio.ext import commands
@@ -557,9 +558,8 @@ class Bot(commands.Bot):
     streamerID = None
 
     Settings = settings.Load() # load base settings. key names are the same as what's written to debug for the sake of not having to re-write the return value (yes I'm lazy in that way)
-
     channelToJoin = Settings.get("Channel")
-    bot_cap = int(Settings.get("Bot Fllow Cap"))
+    bot_cap = int(Settings.get("Bot Follow Cap"))
     blacklist = bool(Settings.get("Auto-Blacklist Bot Spam"))
     blacklisted_words = eval(Settings.get("Blacklisted Words/Phrases"))
     greeter_name = Settings.get("Bot to Read Welcome From")
