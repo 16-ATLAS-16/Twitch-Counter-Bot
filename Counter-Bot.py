@@ -1570,11 +1570,13 @@ class Bot(commands.Bot):
                 await channel.send("(integer) index: integer used to determine a position in a list or dict, starts at 0 for first entry")
                 await channel.send("bool: value of either true or false")
 
-            if "ab!commands" == words[0] or "ab!help" == words[0]:
-                await channel.send("varHelp : Display variable types help")
+            if ("ab!commands" == words[0] or "ab!help" == words[0]) and is_streamer:
+                await channel.send("varHelp : Display variable types help (broadcaster only)")
                 await channel.send("setGreeter : Updates follow trigger conditions (broadcaster only)")
                 await channel.send("setCap : Sets the follow cap before anti-bot response is triggered (broadcaster only)")
                 await channel.send("setFTime : Sets the follow only mode time in case of bot raid (broadcaster only)")
+                await channel.send("commands : Displays this set of messages (broadcaster only)")
+                await channel.send("help : Displays this set of messages (broadcaster only)")
                 await channel.send("poll : Starts a poll. (moderator and above)")
 
             if "ab!poll" == words[0] and is_mod:
@@ -1693,4 +1695,3 @@ if __name__ == "__main__":
         print(str(e))
 
 debug.write("<<--Shutting Down-->>")
-# I am so sorry the code is messy. I'll try to clean it up soon but it's been a long time and getting it to work is honestly my only goal for today (August 17, 2021)
