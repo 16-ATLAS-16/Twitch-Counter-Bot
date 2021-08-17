@@ -9,6 +9,11 @@ from requests import patch
 import datetime
 import time
 import dotenv
+import tkinter
+from tkinter import *
+from tkinter import ttk
+import webbrowser
+import threading
 
 dotenv.load_dotenv()
 
@@ -83,276 +88,929 @@ def writeEnv(Settings=None):
         else:
             raise IndexError(f"Settings provided don't match required parse length. Provided: {len(Settings)}, Required: {len(keys)}")
 
-            
-            
-#create a setup to write initial env variables. can be re-triggered as needed.
-def SetupScreen():
-    channel = None
-    botcap = 20
-    blacklist = True
-    blacklisted_phrases = []
-    greeters = ['nightbot', 'streamelements', 'streamlabs']
-    greeter = 'nightbot'
-    word_index = 0
-    welcome_marker = None
-    duration = 10
-    
-    def clr():
-        for x in range(500):
-            print("\n")
 
-    clr()
 
-    #step 1
-    while 1:
-        try:
-            print("<===---~~~ SETUP ~~~---===>")
-            print("\n")
-            print("Channel Name Setup:")
-            channel = input("Enter Your Channel Name > ")
-            clr()
-            break
-        except KeyboardInterrupt:
-            clr()
+#this next one's a bit of a doozy so hold tight
+# styles follow format {name:{style item:{setting:value}}}, any style that isn't defined will return default or first defined col for other widget depending on setting.
+# values such as buttonAlt are for toggleable buttons such as the boolButton (replacement for Checkbutton for better visual representation of a boolean switch)
+styles={'dark':{'window':{'bg':'#323232'},
+                'button':{'bg':'#484848',
+                             'fg':'#ffffff',
+                          'relief':'flat'},
+                   'buttonAlt':{'bg':'#848484',
+                                'fg':'#000000'},
+                   'inputField':{'bg':'#484848',
+                                 'fg':'#ffffff',
+                                 'justify':CENTER,
+                                 'relief':'flat'},
+                   'checkbutton':{'bg':'#323232',
+                                  'fg':'#848484'},
+                   'radiobutton':{'bg':'#323232',
+                                  'fg':'#848484'},
+                'label':{'bg':'#323232',
+                         'fg':'#ffffff',
+                         'justify':CENTER},
+                'optionMenu':{'bg':'#484848',
+                              'fg':'#ffffff',
+                              'arrowcolor':'#ffffff'}
+                                  },
+        'light':{'window':{'bg':'#ffffff'},
+                 'button':{'bg':'#ffffff',
+                           'fg':'#000000'},
+                 'buttonAlt':{'bg':'#000000',
+                              'fg':'#ffffff'},
+                 'inputField':{'bg':'#ffffff',
+                               'fg':'#000000',
+                               'justify':CENTER},
+                 'checkbutton':{'bg':'#ffffff',
+                                'fg':'#000000'},
+                 'radiobutton':{'bg':'#ffffff',
+                                'fg':'#000000'},
+                 'label':{'bg':'#ffffff',
+                          'fg':'#000000'},
+                 'optionMenu':{'bg':'#ffffff',
+                               'fg':'#000000'}
+                                  }}
 
-    #step 2
-    while 1:
-        try:
-            print("<====----~~~~ SETUP ~~~~----====>")
-            print("\n")
-            print("Bot Follow Cap is 20 by default.")
-            modify = input("Modify bot cap? [Y/N]> ")
-            if modify.lower() == 'y':
-                new_cap = input("Enter the new follow cap for bot raid event trigger > ")
-                try:
-                    botcap = int(new_cap)
-                    clr()
-                    break
-                except:
-                    print("Please only enter numerical values.")
-                    time.sleep(1)
-                    clr()
-            elif modify.lower() == 'n':
-                new_cap = botcap
-                clr()
-                break
-            else:
-                clr()
-        except KeyboardInterrupt:
-            clr()
+class boolButton(Button):
 
-    #step 3
-    while 1:
-        try:
-            print("<<======------~~~~~~ SETUP ~~~~~~------======>>")
-            print("\n")
-            print("Auto Blacklist Bot Phrases is on by default.")
-            modify = input("Turn off? [Y/N]> ")
-            if modify.lower() == 'y':
-                blacklist = False
-                clr()
-                break
-            elif modify.lower() == 'n':
-                blacklist = True
-                clr()
-                break
-            else:
-                clr()
-        except KeyboardInterrupt:
-            clr()
+    value = False
+    btn = None
 
-    #step 4
-    while 1:
-        try:
-            print("<<======------~~~~~~ SETUP ~~~~~~------======>>")
-            print("\n")
-            print("Beforfe setup continues, set up some blocked phrases.")
-            print("Current blocked phrases: ")
-            for phrase in blacklisted_phrases:
-                print(f"|- > {phrase}")
-            toAdd = input("Enter phrase to add or press CTRL+C to continue > ")
-            blacklisted_phrases.append(toAdd)
-            clr()
-        except KeyboardInterrupt:
-            clr()
-            break
+    def __init__(self, states=None, defaultValue=False, *args, **kwargs): # example for states {'off':{'text':'off','bg':'red','fg':'black'}, 'on':{'text':'on','bg':'green','fg':'black'}}
+        Button.__init__(self, *args, **kwargs)
+        Button.configure(self, command=lambda: boolButton.toggleButton(states, self))
+        if defaultValue == False:
+            boolButton.toggleButton(states, self)
+            boolButton.toggleButton(states, self)
+        else:
+            boolButton.toggleButton(states, self)
 
-    #step 5
-    while 1:
-        try:
-            print("<<======------~~~~~~ SETUP ~~~~~~------======>>")
-            print("\n")
-            print("This bot relies on follow messages to read follows. (patch soon!)\nPlease add the name of any bot that sends a message on follow in chat\n(Only 1 may trigger the follow function on this bot)")
-            print("Bot names on list: ")
-            for greeter in greeters:
-                print(f"| - > {greeter}")
-            botToAdd = input("Please enter the name of your bot (streamlabs, nightbot, and streamelements are on the list by default)\n(Press CTRL + C to select, or keep entering names) > ")
-            greeters.append(botToAdd)
-            clr()
-        except KeyboardInterrupt:
-            clr()
-            break
+    def toggleButton(opts, btn):
 
-    while 1:
-        try:
-            print("<<======------~~~~~~ SETUP ~~~~~~------======>>")
-            print("\n")
-            print("Now choose 1 from the list below")
-            for greeter in greeters:
-                print(f"| - > {greeter} | index [{greeters.index(greeter)}]")
-            try:
-                chosen = input("Choose 1 bot to read follow messages from (index only) > ")
-                try:
-                    conf = input(f"You selected {greeters[int(chosen)]}, is this correct? [Y/N] > ")
-                    conf = conf.lower()
-                    if conf == 'y':
-                        try:
-                            greeter = greeters[int(chosen)]
-                            clr()
-                            break
-                        except:
-                            print("Please pick an index off the list provided.")
-                    elif conf == 'n':
-                        clr()
+        if btn.value == True:
+            btn['text'] = opts.get('off').get('text')
+            btn['bg'] = opts.get('off').get('bg')
+            btn['fg'] = opts.get('off').get('fg')
+            btn['relief'] = 'raised'
+
+        if btn.value == False:
+            btn['text'] = opts.get('on').get('text')
+            btn['bg'] = opts.get('on').get('bg')
+            btn['fg'] = opts.get('on').get('fg')
+            btn['relief'] = 'sunken'
+
+        btn.value = not btn.value
+
+def findOpt(Widget=None, Style=None, styleSet=None, specificOption=None, overrides=None):
+
+        if overrides == None or overrides.get(specificOption) == None:
+            if styleSet != None and Style != None:
+                if Widget != None:
+                    if specificOption == None:
+                        print(f"returning {styleSet.get(Style).get(Widget)}")
+                        return styleSet.get(Style).get(Widget)
+
+                    elif specificOption != None:
+                        #print(f"STYLE {Style}, STYLESET {styleSet}")
+                        if styleSet.get(Style).get(Widget) != None:
+                            print(f"request {Widget} returning {styleSet.get(Style).get(Widget).get(specificOption)}")
+                            return styleSet.get(Style).get(Widget).get(specificOption)
+                        else:
+                            return None
+
+                else:
+                    if specificOption != None:
+                        print(f"request {Widget} returning {styleSet.get(Style).get(specificOption)}")
+                        return styleSet.get(Style).get(specificOption)
+
                     else:
-                        clr()
-                except KeyboardInterrupt:
-                    clr()
-            except IndexError:
-                print("Please pick an index off the list provided.")
-                time.sleep(1)
-                clr()
-        except KeyboardInterrupt:
-            clr()
+                        print(f"request {Widget} returning None")
+                        return None
 
-    print("Hey there. If you're reading this you've made it this far :D")
-    time.sleep(5)
-    print("There's only a couple more setup stages left, this is to ensure we don't misdetect anything.")
-    time.sleep(6)
-    print("You ready?")
-    input("Press ENTER to proceed! ")
+            elif Style == None and styleSet != None and specificOption != None:
+                if Widget != None:
+                    print(f"request {Widget} returning {styleSet.get(Widget).get(specificOption)}")
+                    return styleSet.get(Widget).get(specificOption)
 
-    clr()
-    
-    while 1:
-        try:
-            print("<<======------~~~~~~ SETUP ~~~~~~------======>>")
-            print("\n")
-            print("This next one might sound odd, but trust me it works.")
-            phrase = input("Please enter the bot's template follow message > ")
-            words = phrase.split(' ')
-            clr()
+                elif Widget == None:
+                    print(f"request {Widget} returning {styleSet.get(specificOption)}")
+                    return styleSet.get(specificOption)
 
-            while 1:
-                try:
-                    print("<<======------~~~~~~ SETUP ~~~~~~------======>>")
-                    print("\n")
-                    print("Now please select the index that corresponds to where the username is within the sentence.")
-                    for word in words:
-                        print(f"| - > [{word}] | index [{words.index(word)}]")
-                    try:
-                        chosen = input("Word index > ")
-                        try:
-                            conf = input(f"You selected {words[int(chosen)]}, is this correct? [Y/N] > ")
-                            conf = conf.lower()
-                            if conf == 'y':
-                                word_index = int(chosen)
-                                clr()
-                                break
-                            elif conf == 'n':
-                                clr()
-                            else:
-                                clr()
-                        except KeyboardInterrupt:
-                            clr()
-                    except:
-                        print("Please pick an index off the list provided.")
-                        time.sleep(1)
-                        clr()
-                except KeyboardInterrupt:
-                    clr()
-
-            while 1:
-                try:
-                    print("<<======------~~~~~~ SETUP ~~~~~~------======>>")
-                    print("\n")
-                    print("Now please select the index that corresponds to the greeting word or a greeting marker (Welcome, Follow, etc.).")
-                    for word in words:
-                        print(f"| - > [{word}] | index [{words.index(word)}]")
-                    try:
-                        chosen = input("Word index > ")
-                        try:
-                            conf = input(f"You selected {words[int(chosen)]}, is this correct? [Y/N] > ")
-                            conf = conf.lower()
-                            if conf == 'y':
-                                welcome_marker = words[int(chosen)]
-                                clr()
-                                break
-                            elif conf == 'n':
-                                clr()
-                            else:
-                                clr()
-                        except KeyboardInterrupt:
-                            clr()
-                    except:
-                        print("Please pick an index off the list provided.")
-                        time.sleep(1)
-                        clr()
-                except KeyboardInterrupt:
-                    clr()
-            break
-        except KeyboardInterrupt:
-            clr()
-
-    #last step (as of v1)
-    while 1:
-        try:
-            print("<<======------~~~~~~ SETUP ~~~~~~------======>>")
-            print("\n")
-            print("When a bot raid occurs, followers only is enabled. By default this is 10 (mintues)\nHow long should users follow for in order to chat?")
-            duration = input("Follow age to chat <in minutes, 1 = 1 minute, etc.> (NON-ZERO!) > ")
-            try:
-                duration = int(duration)
-                clr()
-                break
-            except:
-                print("Please only enter numerical values.")
-                time.sleep(1)
-                clr()
-        except KeyboardInterrupt:
-            clr()
-
-    while 1: #last step as of v1.1
-        try:
-            print("<<======------~~~~~~ SETUP ~~~~~~------======>>")
-            print("\n")
-            print("FINAL STEP! Congrats on making it :)")
-            print("Head to this website and click Authenticate: https://id.twitch.tv/oauth2/authorize?client_id=7583ak4tqsqbnpbdoypfpg2h0ie4tu&redirect_uri=http://localhost&response_type=token+id_token&scope=openid+channel:read:editors+channel:read:hype_train+channel:read:polls+channel:read:predictions+channel:read:redemptions+channel:read:subscriptions+moderation:read+user:edit+user:read:broadcast+user:read:email+user:read:follows+user:read:subscriptions+channel:moderate+chat:edit+chat:read+whispers:read+whispers:edit+channel:manage:polls")
-            tkn = input("This should have redirected you to a localhost site.\nPaste the site URL here > ")
-            tkn = tkn.split('/')[3].split('=')[1].split('&')[0]
-            if len(tkn) == 30:
-                clr()
-                break
             else:
-                print("Invalid URL provided. Please double-check and re-enter.")
-                input("ENTER to re-enter ")
-                clr()
-        except KeyboardInterrupt:
-            clr()
+                return None
+        elif overrides != None and specificOption != None:
+            return overrides.get(specificOption)
 
-    #Final settings data
-    print("<<<<========-------- RESULTS --------========>>>>")
-    print("\n")
-    print(f"Channel Name: {channel}\nBot Follow Cap: {botcap}\nBlacklist Bot Raid Phrases: {blacklist}\nBot to Accept Follow Messages From: {greeter}\nUsername Word Index: {word_index}\nWelcome Marker Word: {welcome_marker}\nFollower Only Min. Follow Age: {duration}")
-    print("To re-enter information, please press CTRL + C within the next 10 seconds to start over. (or modify .env as you see fit)")
-    time.sleep(10)
-    
-    writeEnv([channel, botcap, blacklist, blacklisted_phrases, greeter, word_index, welcome_marker, duration, tkn])
-    
-    print("Config updated. Bot Starting :) ")
-    time.sleep(2)
+        else:
+            return None
+
+def initialize(windowOptions=None, style=None, widgets=[]):
+
+    retWidgets = []
+    retVars = [] # NOTE: retVars uses tuples with structure (variable, attachedObject).
+
+    def createWidget(Widget, widgetOpts):
+
+        if list(widgetOpts.keys())[0] != 'menu':
+            wOpts = widgetOpts.get(list(widgetOpts.keys())[0])
+            if 'pos' in wOpts:
+                if type(wOpts.get('pos')) == tuple:
+                    posKey = 'posTuple'
+                if type(wOpts.get('pos')) == list:
+                    posKey = 'posList'
+                if type(wOpts.get('pos')) == dict:
+                    posKey = 'posDict'
+
+            elif 'side' in wOpts:
+                posKey = 'posPack'
+                
+            elif 'row' in wOpts:
+                posKey = 'posGrid'
+                    
+            elif 'x' in wOpts:
+                if 'y' in wOpts:
+                    posKey = 'posDict2'
+
+            elif wOpts.get('placemode') == 'pack' and wOpts.get('side') == None:
+                posKey = 'posPack'
+
+            else:
+                posKey = None
+
+            print(posKey, wOpts)
             
+            if posKey == 'posTuple' or posKey == 'posList':
+                Widget.place(x=wOpts.get('pos')[0], y=wOpts.get('pos')[1], width=wOpts.get('placeWidth'), height=wOpts.get('placeHeight'), padx=wOpts.get('padx'), pady=wOpts.get('pady'), ipadx=wOpts.get('ipadx'), ipady=wOpts.get('ipady'))
+
+            elif posKey == 'posDict':
+                Widget.place(x=wOpts.get('pos').get('x'), y=wOpts.get('pos').get('y'), width=wOpts.get('placeWidth'), height=wOpts.get('placeHeight'), padx=wOpts.get('padx'), pady=wOpts.get('pady'), ipadx=wOpts.get('ipadx'), ipady=wOpts.get('ipady'))
+
+            elif posKey == 'posDict2':
+                Widget.place(x=wOpts.get('x'), y=wOpts.get('y'), padx=wOpts.get('padx'), pady=wOpts.get('pady'), ipadx=wOpts.get('ipadx'), ipady=wOpts.get('ipady'))
+
+            elif posKey == 'posPack':
+                Widget.pack(side=wOpts.get('side'), padx=wOpts.get('padx'), pady=wOpts.get('pady'), ipadx=wOpts.get('ipadx'), ipady=wOpts.get('ipady'))
+
+            elif posKey == 'posGrid':
+                Widget.grid(row=wOpts.get('row'), column=wOpts.get('column'), padx=wOpts.get('padx'), pady=wOpts.get('pady'), ipadx=wOpts.get('ipadx'), ipady=wOpts.get('ipady'))
+
+            else:
+                print(f"TKUI NOTICE: Widget {widget} at index {list(widgetOpts.keys())[0]} has been given an invalid position descriptor.")
+
             
+
+    mainWindow = Tk()
+    print(windowOptions)
+    mainWindow.title(findOpt(None, specificOption='name', styleSet=windowOptions))
+    mainWindow['bg'] = findOpt('window', style, styleSet=styles).get('bg')
+    mainWindow.geometry(findOpt(None, specificOption='geometry', styleSet=windowOptions))
+
+    for conf in widgets:
+        widget = list(conf.keys())[0]
+        print(f"processing : {conf}")
+        try:
+            if conf.get(widget).get('master').get("widgetIndex") != None:
+                master=retWidgets[int(conf.get(widget).get('master').get("widgetIndex"))]
+            else:
+                master=conf.get(widget).get('master')
+        except:
+            master=conf.get(widget).get('master')
+        if widget == 'button':
+            new = Button(master,
+                         activebackground=findOpt(widget, style, styles, 'activebackground', conf.get(widget)),
+                               activeforeground=findOpt(widget, style, styles, 'activeforeground', conf.get(widget)),
+                               bd=findOpt(widget, style, styles, 'bd', conf.get(widget)),
+                               bg=findOpt(widget, style, styles, 'bg', conf.get(widget)),
+                               command=conf.get(widget).get('command'),
+                               fg=findOpt(widget, style, styles, 'fg', conf.get(widget)),
+                               font=findOpt(widget, style, styles, 'font', conf.get(widget)),
+                               height=conf.get(widget).get('height'),
+                               highlightcolor=findOpt(widget, style, styles, 'highlightcolor', conf.get(widget)),
+                               image=conf.get(widget).get('image'),
+                               justify=findOpt(widget, style, styles, 'justify', conf.get(widget)),
+                               padx=findOpt(widget, style, styles, 'padx', conf.get(widget)),
+                               pady=findOpt(widget, style, styles, 'pady', conf.get(widget)),
+                               relief=findOpt(widget, style, styles, 'relief', conf.get(widget)),
+                               state=conf.get(widget).get('state'),
+                               text=conf.get(widget).get('text'),
+                               underline=conf.get(widget).get('underline'),
+                               width=conf.get(widget).get('width'),
+                               wraplength=conf.get(widget).get('wraplength')
+                               )
+
+        elif widget == 'boolButton':
+            new = boolButton(master=master,
+                             states=conf.get(widget).get('states'),
+                             defaultValue=conf.get(widget).get('defaultValue'),
+                                   activebackground=findOpt(widget, style, styles, 'activebackground', conf.get(widget)),
+                                   activeforeground=findOpt(widget, style, styles, 'activeforeground', conf.get(widget)),
+                                   bd=findOpt(widget, style, styles, 'bd', conf.get(widget)),
+                                   bg=findOpt(widget, style, styles, 'bg', conf.get(widget)),
+                                   fg=findOpt(widget, style, styles, 'fg', conf.get(widget)),
+                                   font=findOpt(widget, style, styles, 'font', conf.get(widget)),
+                                   height=conf.get(widget).get('height'),
+                                   highlightcolor=findOpt(widget, style, styles, 'highlightcolor', conf.get(widget)),
+                                   image=conf.get(widget).get('image'),
+                                   justify=findOpt(widget, style, styles, 'justify', conf.get(widget)),
+                                   padx=findOpt(widget, style, styles, 'padx', conf.get(widget)),
+                                   pady=findOpt(widget, style, styles, 'pady', conf.get(widget)),
+                                   relief=findOpt(widget, style, styles, 'relief', conf.get(widget)),
+                                   state=conf.get(widget).get('state'),
+                                   underline=conf.get(widget).get('underline'),
+                                   width=conf.get(widget).get('width'),
+                                   wraplength=conf.get(widget).get('wraplength')
+                                   )
+
+        elif widget == 'canvas':
+            new = Canvas(master,
+                         bd=findOpt(widget, style, styles, 'bd', conf.get(widget)),
+                         bg=findOpt(widget, style, styles, 'bg', conf.get(widget)),
+                         confine=conf.get(widget).get('confine'),
+                         cursor=conf.get(widget).get('cursor'),
+                         height=conf.get(widget).get('height'),
+                         highlightcolor=findOpt(widget, style, styles, 'highlightcolor', conf.get(widget)),
+                         relief=findOpt(widget, style, styles, 'relief', conf.get(widget)),
+                         scrollregion=conf.get(widget).get('scrollregion'),
+                         width=conf.get(widget).get('width'),
+                         xscrollincrement=conf.get(widget).get('xscrollincrement'),
+                         xscrollcommand=conf.get(widget).get('xscrollcommand'),
+                         yscrollincrement=conf.get(widget).get('yscrollincrement'),
+                         yscrollcommand=conf.get(widget).get('yscrollcommand')
+                         )
+
+        elif widget == 'checkbutton':
+            new = Checkbutton(master,
+                              activebackground=findOpt(widget, style, styles, 'activebackground', conf.get(widget)),
+                              activeforeground=findOpt(widget, style, styles, 'activeforeground', conf.get(widget)),
+                              bg=findOpt(widget, style, styles, 'bg', conf.get(widget)),
+                              bitmap=conf.get(widget).get('bitmap'),
+                              bd=findOpt(widget, style, styles, 'bd', conf.get(widget)),
+                              command=conf.get(widget).get('command'),
+                              cursor=conf.get(widget).get('cursor'),
+                              disabledforeground=findOpt(widget, style, styles, 'disabledforeground', conf.get(widget)),
+                              font=findOpt(widget, style, styles, 'font', conf.get(widget)),
+                              fg=findOpt(widget, style, styles, 'fg', conf.get(widget)),
+                              height=conf.get(widget).get('height'),
+                              highlightcolor=findOpt(widget, style, styles, 'highlightcolor', conf.get(widget)),
+                              image=conf.get(widget).get('image'),
+                              justify=findOpt(widget, style, styles, 'justify', conf.get(widget)),
+                              offvalue=conf.get(widget).get('offvalue'),
+                              onvalue=conf.get(widget).get('onvalue'),
+                              padx=findOpt(widget, style, styles, 'padx', conf.get(widget)),
+                              pady=findOpt(widget, style, styles, 'pady', conf.get(widget)),
+                              relief=findOpt(widget, style, styles, 'relief', conf.get(widget)),
+                              selectcolor=findOpt(widget, style, styles, 'selectcolor', conf.get(widget)),
+                              selectimage=conf.get(widget).get('selectimage'),
+                              state=conf.get(widget).get('state'),
+                              text=conf.get(widget).get('text'),
+                              underline=conf.get(widget).get('underline'),
+                              width=conf.get(widget).get('width'),
+                              wraplength=conf.get(widget).get('wraplength')
+                              )
+
+        elif widget == 'entry' or widget == 'inputField':
+            wid = 'inputField'
+            new = Entry(master,
+                        bg=findOpt(wid, style, styles, 'bg', conf.get(widget)),
+                        bd=findOpt(wid, style, styles, 'bd', conf.get(widget)),
+                        cursor=conf.get(widget).get('cursor'),
+                        font=findOpt(wid, style, styles, 'font', conf.get(widget)),
+                        exportselection=conf.get(widget).get('exportselection'),
+                        fg=findOpt(wid, style, styles, 'fg', conf.get(widget)),
+                        highlightcolor=findOpt(wid, style, styles, 'highlightcolor', conf.get(widget)),
+                        justify=findOpt(wid, style, styles, 'justify', conf.get(widget)),
+                        relief=findOpt(wid, style, styles, 'relief', conf.get(widget)),
+                        selectbackground=findOpt(wid, style, styles, 'selectbackground', conf.get(widget)),
+                        selectforeground=findOpt(wid, style, styles, 'selectforeground', conf.get(widget)),
+                        show=conf.get(widget).get('show'),
+                        textvariable=conf.get(widget).get('textvariable'),
+                        width=conf.get(widget).get('width')
+                        )
+
+        elif widget == 'frame':
+            new = Frame(master,
+                        bg=findOpt(widget, style, styles, 'bg', conf.get(widget)),
+                        bd=findOpt(widget, style, styles, 'bd', conf.get(widget)),
+                        cursor=conf.get(widget).get('cursor'),
+                        height=conf.get(widget).get('height'),
+                        highlightbackground=conf.get(widget).get('highlightbackground'),
+                        relief=findOpt(widget, style, styles, 'relief', conf.get(widget)),
+                        width=conf.get(widget).get('width')
+                        )
+
+        elif widget == 'label':
+            new = Label(master,
+                        anchor=conf.get(widget).get('anchor'),
+                        bg=findOpt(widget, style, styles, 'bg', conf.get(widget)),
+                        bitmap=conf.get(widget).get('bitmap'),
+                        bd=findOpt(widget, style, styles, 'bd', conf.get(widget)),
+                        cursor=conf.get(widget).get('cursor'),
+                        font=findOpt(widget, style, styles, 'font', conf.get(widget)),
+                        fg=findOpt(widget, style, styles, 'fg', conf.get(widget)),
+                        height=conf.get(widget).get('height'),
+                        image=conf.get(widget).get('image'),
+                        justify=findOpt(widget, style, styles, 'justify', conf.get(widget)),
+                        padx=findOpt(widget, style, styles, 'padx', conf.get(widget)),
+                        pady=findOpt(widget, style, styles, 'pady', conf.get(widget)),
+                        relief=findOpt(widget, style, styles, 'relief', conf.get(widget)),
+                        text=conf.get(widget).get('text'),
+                        textvariable=conf.get(widget).get('textvariable'),
+                        underline=conf.get(widget).get('underline'),
+                        width=conf.get(widget).get('width'),
+                        wraplength=conf.get(widget).get('wraplength')
+                        )
+
+        elif widget == 'listbox':
+            new = Listbox(master,
+                          bg=findOpt(widget, style, styles, 'bg', conf.get(widget)),
+                          cursor=conf.get(widget).get('cursor'),
+                          font=findOpt(widget, style, styles, 'font', conf.get(widget)),
+                          fg=findOpt(widget, style, styles, 'fg', conf.get(widget)),
+                          height=conf.get(widget).get('height'),
+                          highlightcolor=findOpt(widget, style, styles, 'highlightcolor', conf.get(widget)),
+                          highlightthickness=findOpt(widget, style, styles, 'highlightthickness', conf.get(widget)),
+                          relief=findOpt(widget, style, styles, 'relief', conf.get(widget)),
+                          selectbackground=findOpt(widget, style, styles, 'selectbackground', conf.get(widget)),
+                          selectmode=conf.get(widget).get('selectmode'),
+                          width=conf.get(widget).get('width'),
+                          xscrollcommand=conf.get(widget).get('xscrollcommand'),
+                          yscrollcommand=conf.get(widget).get('yscrollcommand')
+                          )
+
+        elif widget == 'menubutton':
+            new = Menubutton(master,
+                             activebackground=findOpt(widget, style, styles, 'activebackground', conf.get(widget)),
+                             activeforeground=findOpt(widget, style, styles, 'activeforeground', conf.get(widget)),
+                             anchor=conf.get(widget).get('anchor'),
+                             bg=findOpt(widget, style, styles, 'bg', conf.get(widget)),
+                             bitmap=conf.get(widget).get('bitmap'),
+                             bd=findOpt(widget, style, styles, 'bd', conf.get(widget)),
+                             cursor=conf.get(widget).get('cursor'),
+                             direction=conf.get(widget).get('direction'),
+                             disabledforeground=findOpt(widget, style, styles, 'disabledforeground', conf.get(widget)),
+                             fg=findOpt(widget, style, styles, 'fg', conf.get(widget)),
+                             height=conf.get(widget).get('height'),
+                             highlightcolor=findOpt(widget, style, styles, 'highlightcolor', conf.get(widget)),
+                             image=conf.get(widget).get('image'),
+                             justify=findOpt(wid, style, styles, 'justify', conf.get(widget)),
+                             menu=conf.get(widget).get('menu'),
+                             padx=findOpt(widget, style, styles, 'padx', conf.get(widget)),
+                             pady=findOpt(widget, style, styles, 'pady', conf.get(widget)),
+                             relief=findOpt(widget, style, styles, 'relief', conf.get(widget)),
+                             state=conf.get(widget).get('state'),
+                             text=conf.get(widget).get('text'),
+                             textvariable=conf.get(widget).get('textvariable'),
+                             underline=conf.get(widget).get('underline'),
+                             width=conf.get(widget).get('width'),
+                             wraplength=conf.get(widget).get('wraplength')
+                             )
+
+        elif widget == 'optionMenu':
+            if conf.get(widget).get('values') != None:
+                if conf.get(widget).get('variableType') == 'int':
+                    newVar = IntVar(mainWindow)
+                else:
+                    newVar = StringVar(mainWindow)
+            else:
+                newVar = StringVar(mainWindow)
+
+            Style=ttk.Style()
+            Style.configure("NewStyle.TMenubutton",
+                            foreground=findOpt(widget, style, styles, 'fg', conf.get(widget)),
+                            background=findOpt(widget, style, styles, 'bg', conf.get(widget)),
+                            )
+
+            new = ttk.OptionMenu(master,
+                             newVar,
+                             conf.get(widget).get('default'),
+                             *conf.get(widget).get('values'),
+                             style="NewStyle.TMenubutton",
+                             command=conf.get(widget).get("command")
+                             )
+            retVars.append((newVar, new))
+
+        elif widget == 'menu':
+            new = Menu(master,
+                       activebackground=findOpt(widget, style, styles, 'activebackground', conf.get(widget)),
+                       activeborderwidth=findOpt(widget, style, styles, 'activeborderwidth', conf.get(widget)),
+                       activeforeground=findOpt(widget, style, styles, 'activeforeground', conf.get(widget)),
+                       bg=findOpt(widget, style, styles, 'bg', conf.get(widget)),
+                       bd=findOpt(widget, style, styles, 'bd', conf.get(widget)),
+                       cursor=conf.get(widget).get('cursor'),
+                       disabledforeground=findOpt(widget, style, styles, 'disabledforeground', conf.get(widget)),
+                       font=findOpt(widget, style, styles, 'font', conf.get(widget)),
+                       fg=findOpt(widget, style, styles, 'fg', conf.get(widget)),
+                       postcommand=conf.get(widget).get('postcommand'),
+                       relief=findOpt(widget, style, styles, 'relief', conf.get(widget)),
+                       image=conf.get(widget).get('image'),
+                       selectcolor=conf.get(widget).get('selectcolor'),
+                       tearoff=conf.get(widget).get('tearoff'),
+                       title=conf.get(widget).get('title')
+                       )
+
+        elif widget == 'message':
+            new = Message(master,
+                          anchor=conf.get(widget).get('anchor'),
+                          bg=findOpt(widget, style, styles, 'bg', conf.get(widget)),
+                          bitmap=conf.get(widget).get('bitmap'),
+                          cursor=conf.get(widget).get('cursor'),
+                          font=findOpt(widget, style, styles, 'font', conf.get(widget)),
+                          fg=findOpt(widget, style, styles, 'fg', conf.get(widget)),
+                          height=conf.get(widget).get('height'),
+                          image=conf.get(widget).get('image'),
+                          justify=findOpt(wid, style, styles, 'justify', conf.get(widget)),
+                          padx=findOpt(widget, style, styles, 'padx', conf.get(widget)),
+                          pady=findOpt(widget, style, styles, 'pady', conf.get(widget)),
+                          relief=findOpt(widget, style, styles, 'relief', conf.get(widget)),
+                          text=conf.get(widget).get('text'),
+                          textvariable=conf.get(widget).get('textvariable'),
+                          underline=conf.get(widget).get('underline'),
+                          width=conf.get(widget).get('width'),
+                          wraplength=conf.get(widget).get('wraplength')
+                          )
+
+        elif widget == 'radiobutton':
+            new = Radiobutton(master,
+                              activebackground=findOpt(widget, style, styles, 'activebackground', conf.get(widget)),
+                              activeforeground=findOpt(widget, style, styles, 'activeforeground', conf.get(widget)),
+                              anchor=conf.get(widget).get('anchor'),
+                              bg=findOpt(widget, style, styles, 'bg', conf.get(widget)),
+                              bitmap=conf.get(widget).get('bitmap'),
+                              borderwidth=findOpt(widget, style, styles, 'borderwidth', conf.get(widget)),
+                              command=conf.get(widget).get('command'),
+                              cursor=conf.get(widget).get('cursor'),
+                              font=findOpt(widget, style, styles, 'font', conf.get(widget)),
+                              fg=findOpt(widget, style, styles, 'fg', conf.get(widget)),
+                              height=conf.get(widget).get('height'),
+                              highlightbackground=findOpt(widget, style, styles, 'highlightbackground', conf.get(widget)),
+                              highlightcolor=findOpt(widget, style, styles, 'highlightcolor', conf.get(widget)),
+                              image=conf.get(widget).get('image'),
+                              justify=findOpt(wid, style, styles, 'justify', conf.get(widget)),
+                              padx=findOpt(widget, style, styles, 'padx', conf.get(widget)),
+                              pady=findOpt(widget, style, styles, 'pady', conf.get(widget)),
+                              relief=findOpt(widget, style, styles, 'relief', conf.get(widget)),
+                              selectcolor=findOpt(widget, style, styles, 'selectcolor', conf.get(widget)),
+                              selectimage=conf.get(widget).get('selectimage'),
+                              state=conf.get(widget).get('state'),
+                              text=conf.get(widget).get('text'),
+                              textvariable=conf.get(widget).get('textvariable'),
+                              underline=conf.get(widget).get('underline'),
+                              value=conf.get(widget).get('value'),
+                              variable=conf.get(widget).get('variable'),
+                              width=conf.get(widget).get('width'),
+                              wraplength=conf.get(widget).get('wraplength')
+                              )
+
+        elif widget == 'scale':
+            new = Scale(master,
+                        activebackground=findOpt(widget, style, styles, 'activebackground', conf.get(widget)),
+                        bg=findOpt(widget, style, styles, 'bg', conf.get(widget)),
+                        command=conf.get(widget).get('command'),
+                        cursor=conf.get(widget).get('cursor'),
+                        digits=conf.get(widget).get('digits'),
+                        font=findOpt(widget, style, styles, 'font', conf.get(widget)),
+                        fg=findOpt(widget, style, styles, 'fg', conf.get(widget)),
+                        from_ = conf.get(widget).get('from_'),
+                        highlightbackground=findOpt(widget, style, styles, 'highlightbackground', conf.get(widget)),
+                        highlightcolor=findOpt(widget, style, styles, 'highlightcolor', conf.get(widget)),
+                        label=conf.get(widget).get('label'),
+                        length=conf.get(widget).get('length'),
+                        orient=conf.get(widget).get('orient'),
+                        relief=findOpt(widget, style, styles, 'relief', conf.get(widget)),
+                        repeatdelay=conf.get(widget).get('repeatdelay'),
+                        resolution=conf.get(widget).get('resolution'),
+                        showvalue=conf.get(widget).get('showvalue'),
+                        sliderlength=conf.get(widget).get('sliderlength'),
+                        state=conf.get(widget).get('state'),
+                        takefocus=conf.get(widget).get('takefocus'),
+                        tickinterval=conf.get(widget).get('tickinterval'),
+                        to=conf.get(widget).get('to'),
+                        troughcolor=findOpt(widget, style, styles, 'troughcolor', conf.get(widget)),
+                        variable=conf.get(widget).get('variable'),
+                        width=conf.get(widget).get('width')
+                        )
+
+        elif widget == 'scrollbar':
+            new = Scrollbar(master,
+                            activebackground=findOpt(widget, style, styles, 'activebackground', conf.get(widget)),
+                            bg=findOpt(widget, style, styles, 'bg', conf.get(widget)),
+                            bd=findOpt(widget, style, styles, 'bd', conf.get(widget)),
+                            command=conf.get(widget).get('command'),
+                            cursor=conf.get(widget).get('cursor'),
+                            elementborderwidth=conf.get(widget).get('elementborderwidth'),
+                            highlightbackground=findOpt(widget, style, styles, 'highlightbackground', conf.get(widget)),
+                            highlightcolor=findOpt(widget, style, styles, 'highlightcolor', conf.get(widget)),
+                            highlightthickness=findOpt(widget, style, styles, 'highlightthickness', conf.get(widget)),
+                            jump=conf.get(widget).get('jump'),
+                            orient=conf.get(widget).get('orient'),
+                            repeatdelay=conf.get(widget).get('repeatdelay'),
+                            repeatinterval=conf.get(widget).get('repeatinterval'),
+                            takefocus=conf.get(widget).get('takefocus'),
+                            troughcolor=findOpt(widget, style, styles, 'troughcolor', conf.get(widget)),
+                            width=conf.get(widget).get('width')
+                            )
+
+        elif widget == 'text':
+            new = Text(master,
+                       bg=findOpt(widget, style, styles, 'bg', conf.get(widget)),
+                       bd=findOpt(widget, style, styles, 'bd', conf.get(widget)),
+                       cursor=conf.get(widget).get('cursor'),
+                       exportselection=conf.get(widget).get('exportselection'),
+                       font=findOpt(widget, style, styles, 'font', conf.get(widget)),
+                       fg=findOpt(widget, style, styles, 'fg', conf.get(widget)),
+                       height=conf.get(widget).get('height'),
+                       highlightbackground=findOpt(widget, style, styles, 'highlightbackground', conf.get(widget)),
+                       highlightcolor=findOpt(widget, style, styles, 'highlightcolor', conf.get(widget)),
+                       highlightthickness=findOpt(widget, style, styles, 'highlightthickness', conf.get(widget)),
+                       insertbackground=conf.get(widget).get('insertbackground'),
+                       insertborderwidth=conf.get(widget).get('insertborderwidth'),
+                       insertofftime=conf.get(widget).get('insertofftime'),
+                       insertontime=conf.get(widget).get('insertontime'),
+                       insertwidth=conf.get(widget).get('insertwidth'),
+                       padx=findOpt(widget, style, styles, 'padx', conf.get(widget)),
+                       pady=findOpt(widget, style, styles, 'pady', conf.get(widget)),
+                       relief=findOpt(widget, style, styles, 'relief', conf.get(widget)),
+                       selectbackground=findOpt(widget, style, styles, 'selectbackground', conf.get(widget)),
+                       selectborderwidth=conf.get(widget).get('selectborderwidth'),
+                       spacing1=conf.get(widget).get('spacing1'),
+                       spacing2=conf.get(widget).get('spacing2'),
+                       spacing3=conf.get(widget).get('spacing3'),
+                       state=conf.get(widget).get('state'),
+                       tabs=conf.get(widget).get('tabs'),
+                       width=conf.get(widget).get('width'),
+                       wrap=conf.get(widget).get('wrap'),
+                       xscrollcommand=conf.get(widget).get('xscrollcommand'),
+                       yscrollcommand=conf.get(widget).get('yscrollcommand')
+                       )
+
+        elif widget == 'toplevel':
+            new = Toplevel(bg=findOpt(widget, style, styles, 'bg', conf.get(widget)),
+                           bd=findOpt(widget, style, styles, 'bd', conf.get(widget)),
+                           cursor=conf.get(widget).get('cursor'),
+                           class_=conf.get(widget).get('class_'),
+                           font=findOpt(widget, style, styles, 'font', conf.get(widget)),
+                           fg=findOpt(widget, style, styles, 'fg', conf.get(widget)),
+                           relief=findOpt(widget, style, styles, 'relief', conf.get(widget)),
+                           height=conf.get(widget).get('height'),
+                           width=conf.get(widget).get('width')
+                           )
+
+        elif widget == 'spinbox':
+            new = Spinbox(master,
+                          activebackground=findOpt(widget, style, styles, 'activebackground', conf.get(widget)),
+                          bg=findOpt(widget, style, styles, 'bg', conf.get(widget)),
+                          bd=findOpt(widget, style, styles, 'bd', conf.get(widget)),
+                          command=conf.get(widget).get('command'),
+                          cursor=conf.get(widget).get('cursor'),
+                          disabledbackground=findOpt(widget, style, styles, 'disabledbackground', conf.get(widget)),
+                          disabledforeground=findOpt(widget, style, styles, 'disabledforeground', conf.get(widget)),
+                          font=findOpt(widget, style, styles, 'font', conf.get(widget)),
+                          fg=findOpt(widget, style, styles, 'fg', conf.get(widget)),
+                          from_ = conf.get(widget).get('from_'),
+                          justify=findOpt(wid, style, styles, 'justify', conf.get(widget)),
+                          relief=findOpt(widget, style, styles, 'relief', conf.get(widget)),
+                          repeatdelay=conf.get(widget).get('repeatdelay'),
+                          repeatinterval=conf.get(widget).get('repeatinterval'),
+                          state=widgets.get(widget).get('state'),
+                          textvariable=conf.get(widget).get('textvariable'),
+                          to=conf.get(widget).get('to'),
+                          validate=conf.get(widget).get('validate'),
+                          validatecommand=conf.get(widget).get('validatecommand'),
+                          values=conf.get(widget).get('values'),
+                          vcmd=conf.get(widget).get('vcmd'),
+                          width=conf.get(widget).get('width'),
+                          wrap=conf.get(widget).get('wrap'),
+                          xscrollcommand=conf.get(widget).get('xscrollcommand')
+                          )
+
+        elif widget == 'panedwindow':
+            new = PanedWindow(master,
+                              bg=findOpt(widget, style, styles, 'bg', conf.get(widget)),
+                              bd=findOpt(widget, style, styles, 'bd', conf.get(widget)),
+                              borderwidth=conf.get(widget).get('borderwidth'),
+                              cursor=conf.get(widget).get('cursor'),
+                              handlepad=conf.get(widget).get('handlepad'),
+                              handlesize=conf.get(widget).get('handlesize'),
+                              height=conf.get(widget).get('height'),
+                              orient=conf.get(widget).get('orient'),
+                              relief=findOpt(widget, style, styles, 'relief', conf.get(widget)),
+                              sashcursor=conf.get(widget).get('sashcursor'),
+                              sashrelief=findOpt(widget, style, styles, 'sashrelief', conf.get(widget)),
+                              sashwidth=conf.get(widget).get('sashwidth'),
+                              showhandle=conf.get(widget).get('showhandle'),
+                              width=conf.get(widget).get('width')
+                              )
+
+        elif widget == 'labelframe':
+            new = LabelFrame(master,
+                             bg=findOpt(widget, style, styles, 'bg', conf.get(widget)),
+                             bd=findOpt(widget, style, styles, 'bd', conf.get(widget)),
+                             cursor=conf.get(widget).get('cursor'),
+                             font=conf.get(widget).get('font'),
+                             height=conf.get(widget).get('height'),
+                             labelAnchor=conf.get(widget).get('labelAnchor'),
+                             highlightbackground=findOpt(widget, style, styles, 'highlightbackground', conf.get(widget)),
+                             highlightcolor=findOpt(widget, style, styles, 'highlightcolor', conf.get(widget)),
+                             highlightthickness=findOpt(widget, style, styles, 'highlightthickness', conf.get(widget)),
+                             relief=findOpt(widget, style, styles, 'relief'),
+                             text=conf.get(widget).get('text'),
+                             width=conf.get(widget).get('width')
+                             )
+
+        createWidget(new, conf)
+        print(widget)
+        retWidgets.append(new)
+
+    mainWindow.resizable(False, False)
+
+    return ([mainWindow, style], retWidgets, retVars)
+
+def matchType(inObj=None, targetType=None):
+    return [type(inObj) == targetType, type(inObj), targetType]
+
+def add_greeter(index, offsetX=0, offsetY=0):
+    nonANChars = ["!", "@", "#", "&", "(", ")", "–", "[", "{", "}", "]", ":", ";", "‘", ",", "?", "/", "*", "\\", ' ', '"', "'"]
+    clear = True
+    for char in nonANChars:
+        if char in WIDGETS[-2][index].get():
+            
+            print("This triggers")
+            newstuff = []
+            
+            for x in errs:
+                
+                if WIDGETS[-2][index] == x[1]:
+                    delAllErrors(errs, errs.index(x))
+                    
+                else:
+                    newstuff.append(x)
+                    
+            exec("errs=newstuff")
+            spawnErrorText('Only alphanumeric characters are permitted', [WIDGETS[-2][index].winfo_x()+offsetX, WIDGETS[-2][index].winfo_y()+offsetY], errs, WIDGETS[-2][index])
+            clear = False
+
+    if len(WIDGETS[-2][index].get()) == 0:
+        clear = False
+        newstuff = []
+        
+        for x in errs:
+            
+            if WIDGETS[-2][index] == x[1]:
+                delAllErrors(errs, errs.index(x))
+                
+            else:
+                newstuff.append(x)
+                
+        exec("errs=newstuff")
+        spawnErrorText('Can\'t add blank item.', [WIDGETS[-2][index].winfo_x()+offsetX, WIDGETS[-2][index].winfo_y()+offsetY], errs, WIDGETS[-2][index])
+
+    if clear == True:
+        
+        if not WIDGETS[-2][index].get() in greeters:
+            greeters.append(WIDGETS[-2][index].get().lower())
+            WIDGETS[-2][index].delete(0,END)
+            WIDGETS[1][13].set_menu(WIDGETS[-1][0][0].get(), *greeters)
+            newstuff = []
+            for x in errs:
+                if WIDGETS[-2][index] == x[1]:
+                    delAllErrors(errs, errs.index(x))
+                else:
+                    newstuff.append(x)
+            exec("errs=newstuff")
+            
+        else:
+            spawnErrorText('Greeter already in list.', [WIDGETS[-2][index].winfo_x()+offsetX, WIDGETS[-2][index].winfo_y()+offsetY], errs, WIDGETS[-2][index])
+            print([WIDGETS[-2][index].winfo_x(), WIDGETS[-2][index].winfo_y()])
+
+def spawnErrorText(txt=None, loc=[], IDList=None, relateTo=None):
+    typeTXT = matchType(txt, str)
+    if not typeTXT[0]:
+        raise TypeError(f"Value provided for arg <txt> is {typeTXT[1]}, required {typeTXT[2]}")
+
+    typeLoc = matchType(loc, list)
+    if not typeLoc[0]:
+        raise TypeError(f"Value provided for arg <loc> is {typeLoc[1]}, required {typeLoc[2]}")
+
+    if len(loc) != 2:
+        raise IndexError(f"spawnErrorText requires a list with length 2 (posX, posY). Length given: {len(loc)}")
+    
+    newError=Label(text=txt,
+                   fg='red',
+                   bg=findOpt('label', WIDGETS[0][1], styles, 'bg'),
+                   bd=findOpt('label', WIDGETS[0][1], styles, 'bd'),
+                   font=findOpt('label', WIDGETS[0][1], styles, 'font'),
+                   justify=findOpt('label', WIDGETS[0][1], styles, 'justify'),
+                   padx=findOpt('label', WIDGETS[0][1], styles, 'padx'),
+                   pady=findOpt('label', WIDGETS[0][1], styles, 'pady'),
+                   relief=findOpt('label', WIDGETS[0][1], styles, 'relief'))
+    newError.place(x=loc[0], y=loc[1])
+
+    if IDList != None:
+        typeIDL = matchType(IDList, list)
+        if not typeIDL[0]:
+            raise IndexError(f"Value provided for arg <IDList> is {typeIDL[1]}, required {typeIDL[2]}")
+
+        IDList.append([newError, relateTo])
+
+        return IDList
+
+def delAllErrors(ErrorMessageList=[], specificIndex=None):
+    typeERR = matchType(ErrorMessageList, list)
+    if not typeERR:
+        raise TypeError(f"Type of ErrorMessageList ({typeERR[1]}) does not match required type: {typeERR[2]}")
+
+    if specificIndex != None:
+        ErrorMessageList[specificIndex][0].destroy()
+        return True
+    #
+    else:
+        if len(ErrorMessageList) > 0:
+            for item in ErrorMessageList:
+                item.destroy()
+            return []
+
+def refreshOpts(opts, varList):
+    
+    for button in opts.get("buttons"):
+        if type(button) == ttk.OptionMenu:
+            for var, parent in varList:
+                if parent == button:
+                    button.set_menu(var.get(), *opts.get('source').get().split(' '))
+
+    opts.get('source').delete(0,END)
+
+def openLink(url):
+    webbrowser.open(url)
+
+def startBot():
+    a=WIDGETS[1][1] # entry
+    b=WIDGETS[1][3] # entry
+    c=WIDGETS[1][6] # entry
+    d=WIDGETS[1][10] # entry
+    e=WIDGETS[1][13] # optionMenu
+    f=WIDGETS[1][19] # optionMenu
+    g=WIDGETS[1][21] # optionMenu
+    h=WIDGETS[1][8] # boolButton
+
+    newstuff = []
+    for x in errs:
+        if a == x[1] or b == x[1] or c == x[1] or d == x[1] or e == x[1] or f == x[1] or g == x[1]:
+            delAllErrors(errs, errs.index(x))
+        else:
+            newstuff.append(x)
+
+    exec("errs = newstuff")
+
+    allgood = True
+
+    if len(a.get()) == 0:
+        allgood = False
+        spawnErrorText('Can\'t leave blank', [a.winfo_x()+14, a.winfo_y()+19], errs, a)
+
+    for char in ["!", "@", "#", "&", "(", ")", "–", "[", "{", "}", "]", ":", ";", "‘", ",", "?", "/", "*", "\\", ' ', '"', "'"]:
+        if char in a.get():
+            allgood = False
+            spawnErrorText('Only alphanumeric characters are permitted.', [a.winfo_x()-115, a.winfo_y()+19], errs, a)
+
+    if len(b.get()) == 0:
+        allgood = False
+        spawnErrorText('Can\'t leave blank', [b.winfo_x()+14, b.winfo_y()+19], errs, b)
+
+    elif len(b.get()) > 0:
+
+        try:
+            int(b.get())
+        except ValueError:
+            allgood = False
+            spawnErrorText('Only integers are permitted.', [b.winfo_x()-25, b.winfo_y()+19], errs, b)
+
+    if len(c.get()) == 0:
+        allgood = False
+        spawnErrorText('Can\'t leave blank', [c.winfo_x()+70, c.winfo_y()+19], errs, c)
+
+    elif len(c.get()) > 0:
+
+        try:
+            if len(c.get().split('/')[3].split('=')[1].split('&')[0]) != 30:
+                allgood = False
+                spawnErrorText('Invalid URL provided', [c.winfo_x()+60, c.winfo_y()+19], errs, c)
+        except IndexError:
+            allgood = False
+            spawnErrorText('Invalid URL provided', [c.winfo_x()+60, c.winfo_y()+19], errs, c)
+
+    if len(d.get()) == 0:
+        allgood = False
+        spawnErrorText('Can\'t leave blank', [d.winfo_x()+14, d.winfo_y()+19], errs, d)
+
+    elif len(d.get()) > 0:
+
+        try:
+            int(d.get())
+        except ValueError:
+            allgood = False
+            spawnErrorText('Only integers are permitted.', [d.winfo_x()-25, d.winfo_y()+19], errs, d)
+
+    for var, owner in WIDGETS[-1]:
+        if owner == f:
+            if len(var.get()) == 0:
+                allgood = False
+                spawnErrorText('Can\'t leave blank', [f.winfo_x()+14, f.winfo_y()+24], errs, f)
+        if owner == g:
+            if len(var.get()) == 0:
+                allgood = False
+                spawnErrorText('Can\'t leave blank', [g.winfo_x()+14, g.winfo_y()+24], errs, g)
+
+    if allgood == True:
+        print("ALL OPTS GOOD")
+        channel = a.get()
+        duration = int(b.get())
+        tkn = c.get().split('/')[3].split('=')[1].split('&')[0]
+        botcap = int(d.get())
+        for var, owner in WIDGETS[-1]:
+            if owner == e:
+                greeter = var.get()
+                break
+        for var, owner in WIDGETS[-1]:
+            if owner == f:
+                tempList = []
+                for x in range(f['menu'].index('end')+1):
+                    tempList.append(f['menu'].entrycget(x, 'label'))
+                word_index = tempList.index(var.get())
+                break
+        for var, owner in WIDGETS[-1]:
+            if owner == g:
+                welcome_marker = var.get()
+                break
+        blacklist = h.value
+        blacklisted_phrases = bList
+
+        #print([channel, botcap, blacklist, blacklisted_phrases, greeter, word_index, welcome_marker, duration, tkn])
+
+        writeEnv([channel, botcap, blacklist, blacklisted_phrases, greeter, word_index, welcome_marker, duration, tkn])
+        WIDGETS[0][0].destroy()
+        dotenv.load_dotenv()
+        
+def setBlacklistButton(test=None):
+
+    WIDGETS[1][24].set_menu(['Blacklist'][0], *bList)
+
+def addToBlacklist(source, List):
+
+    if not source.get() in List and len(source.get()) > 0:
+        cont = True
+        count = 0
+        asd = len(source.get())
+        for x in source.get().split(' '):
+            if len(x) == 0:
+                count += 1
+                print(count, asd)
+
+        if count >= asd:
+            cont = False
+            newstuff = []
+            for x in errs:
+                if WIDGETS[1][WIDGETS[1].index(source)] == x[1]:
+                    delAllErrors(errs, errs.index(x))
+                else:
+                    newstuff.append(x)
+
+            exec("errs=newstuff")
+            spawnErrorText('Spaces only can\'t be\nblacklisted', [source.winfo_x()+15, source.winfo_y()+20], errs, source)
+
+        if cont == True:
+            List.append(source.get())
+            setBlacklistButton()
+            newstuff = []
+            for x in errs:
+                if WIDGETS[1][WIDGETS[1].index(source)] == x[1]:
+                    delAllErrors(errs, errs.index(x))
+                else:
+                    newstuff.append(x)
+
+            WIDGETS[1][WIDGETS[1].index(source)].delete(0,END)
+
+            exec("errs=newstuff")
+
+    else:
+        newstuff = []
+        for x in errs:
+            if WIDGETS[1][WIDGETS[1].index(source)] == x[1]:
+                delAllErrors(errs, errs.index(x))
+            else:
+                newstuff.append(x)
+
+        exec("errs=newstuff")
+        
+        if source.get() in List:
+            spawnErrorText('Already in blacklist', [source.winfo_x()+20, source.winfo_y()+30], errs, source)
+
+        elif len(source.get()) == 0:
+            spawnErrorText('Can\'t add blank to list', [source.winfo_x()+15, source.winfo_y()+30], errs, source)
+    
+greeters=['nightbot', 'streamlabs', 'streamelements']
+
+#create a setup to write initial env variables. can be re-triggered as needed.    
         
 #INITIAL SETUP CODE FOR FIRST TIME RUN
 try:
@@ -361,7 +1019,166 @@ try:
 except FileNotFoundError:
     while 1:
         try:
-            SetupScreen()
+            WIDGETS = initialize({'name':'Twitch Counter-Bot v2.0.0 - Setup', 'geometry':'600x400'}, 'dark', [
+                {'label':{
+                    'text':'Twitch Name:',
+                    'placemode':'place',
+                    'pos':{'x':20,'y':8}
+                    }},
+                {'entry':{
+                    'placemode':'place',
+                    'pos':{'x':120,'y':10}
+                    }},
+                {'label':{
+                    'text':'Followers-Only Time:',
+                    'placemode':'place',
+                    'pos':{'x':0,'y':48}
+                    }},
+                {'entry':{
+                    'placemode':'place',
+                    'pos':{'x':120,'y':50}
+                    }},
+                {'button':{
+                    'text':'Get token link',
+                    'command':lambda: openLink('https://id.twitch.tv/oauth2/authorize?client_id=7583ak4tqsqbnpbdoypfpg2h0ie4tu&redirect_uri=http://localhost&response_type=token+id_token&scope=openid+channel:read:editors+channel:read:hype_train+channel:read:polls+channel:read:predictions+channel:read:redemptions+channel:read:subscriptions+moderation:read+user:edit+user:read:broadcast+user:read:email+user:read:follows+user:read:subscriptions+channel:moderate+chat:edit+chat:read+whispers:read+whispers:edit+channel:manage:polls'),
+                    'placemode':'place',
+                    'pos':{'x':2,'y':98},
+                    'width':14
+                    }},
+                {'label':{
+                    'text':'Paste redirect URL here:',
+                    'placemode':'place',
+                    'pos':{'x':118,'y':100}
+                    }},
+                {'entry':{
+                    'width':40,
+                    'pos':{'x':2,'y':125},
+                    'placemode':'place'}},
+                {'label':{
+                    'text':'Blacklist bot spam phrases?',
+                    'placemode':'place',
+                    'pos':{'x':2,'y':170}
+                    }},
+                {'boolButton':{
+                    'states':{'off':{'text':'off','bg':'red','fg':'black'},
+                              'on':{'text':'on','bg':'green','fg':'black'}},
+                    'placemode':'place',
+                    'pos':{'x':160,'y':168},
+                    'defaultValue':True
+                    }},
+                {'label':{
+                    'text':'# of bot follows to trigger:',
+                    'placemode':'place',
+                    'pos':{'x':280,'y':8}
+                    }},
+                {'entry':{
+                    'width':20,
+                    'placemode':'place',
+                    'pos':{'x':440,'y':10}
+                    }},
+                {'label':{
+                    'placemode':'place',
+                    'pos':{'x':280, 'y':58},
+                    'text':'Select and add a greeter:'
+                    }},
+                {'entry':{
+                    'placemode':'place',
+                    'pos':{'x':440, 'y':100}
+                    }},
+                {'optionMenu':{
+                    'placemode':'place',
+                    'pos':{'x':440,'y':58},
+                    'values':greeters,
+                    'default':greeters[0],
+                    'width':124,
+                    'height':24
+                    }},
+                {'button':{
+                    'placemode':'place',
+                    'pos':{'x':280,'y':96},
+                    'text':'Add Greeter',
+                    'width':20,
+                    'command': lambda: add_greeter(12, -140, 22)
+                    }},
+                {'label':{
+                    'text':'Paste follower greeting message here:',
+                    'placemode':'place',
+                    'pos':{'x':280, 'y':140}
+                    }},
+                {'entry':{
+                    'width':35,
+                    'placemode':'place',
+                    'pos':{'x':280, 'y':160}
+                    }},
+                {'button':{
+                    'placemode':'place',
+                    'pos':{'x':500, 'y':158},
+                    'text':'Refresh Options',
+                    'command':lambda: refreshOpts({'buttons':[WIDGETS[1][19], WIDGETS[1][21]],
+                                                   'source':WIDGETS[1][16]},
+                                                  WIDGETS[-1])
+                    }},
+                {'label':{
+                    'text':'Word containing follower name:',
+                    'placemode':'place',
+                    'pos':{'x':280, 'y':200}
+                    }},
+                {'optionMenu':{
+                    'placemode':'place',
+                    'pos':{'x':460, 'y':200},
+                    'values':[],
+                    'default':[],
+                    'width':134,
+                    'height':24
+                    }},
+                {'label':{
+                    'placemode':'place',
+                    'pos':{'x':280, 'y':250},
+                    'text':'Follow event distinguishing word:'
+                    }},
+                {'optionMenu':{
+                    'placemode':'place',
+                    'pos':{'x':470, 'y':250},
+                    'values':[],
+                    'default':[],
+                    'width':124,
+                    'height':24
+                    }},
+                {'entry':{
+                    'placemode':'place',
+                    'pos':{'x':2, 'y':202},
+                    'width':24
+                    }},
+                {'button':{
+                    'text':'Add to Blacklist',
+                    'placemode':'place',
+                    'pos':{'x':160, 'y':200},
+                    'command':lambda: addToBlacklist(WIDGETS[1][22], bList)
+                    }},
+                {'optionMenu':{
+                    'placemode':'place',
+                    'pos':{'x':160, 'y':230},
+                    'values':['bigfollows'],
+                    'default':['Blacklist'][0],
+                    'width':93,
+                    'height':24,
+                    'command':setBlacklistButton
+                    }},
+                {'button':{
+                    'placemode':'place',
+                    'pos':{'x':2, 'y':268},
+                    'text':'All Set! Start Bot!',
+                    'width':20,
+                    'command':startBot
+                    }}
+                ])
+            errs = []
+            bList = []
+            WIDGETS[-2][10].delete(0,END)
+            WIDGETS[-2][10].insert(0,'20')
+            WIDGETS[-2][3].delete(0,END)
+            WIDGETS[-2][3].insert(0,'10')
+            WIDGETS[0][0].mainloop()
             break
         except Exception as e:
             print(str(e))
@@ -552,6 +1369,7 @@ class settings():
                         
 
 # set up the bot
+        
 class Bot(commands.Bot):
     counter = 0
     botlist = []
@@ -573,10 +1391,8 @@ class Bot(commands.Bot):
     streamerID = None
     prevage=''
     prevprevage=''
-    
 
-
-    def __init__(self):
+    def __init__(self, textfield, window):
 
         super().__init__(
     token=f"{self.token}",
@@ -585,13 +1401,26 @@ class Bot(commands.Bot):
     prefix="<prefix goes here>",
     initial_channels=[f"#{self.channelToJoin}"]
 )
+        self.TEXTFIELD = textfield
+        self.TEXTFIELD.configure(state='normal')
+        self.TEXTFIELD.insert(END, f'\nStarting Bot: Attempting Connection')
+        self.TEXTFIELD.configure(state=DISABLED)
+        self.WINDOW = window
 
+    def update_window(self):
+        while True:
+            self.WINDOW.update()
+            
     async def event_ready(self):
         print("good to go")
         #try:
         #    await self.get_channel(self.channelToJoin).send("Bot Ready!") <- optional and doesn't always work
         #except Exception as e:
         #    print(str(e))
+        self.TEXTFIELD.configure(state='normal')
+        self.TEXTFIELD.insert(END, f'\nBot Start: SUCCESS\nConnected to channel: {self.channelToJoin}\nDEBUG: RAW SETTINGS : {self.Settings}')
+        self.TEXTFIELD.insert(END, f'\n\n <====== CHAT LOG BEGINS HERE ======>\n')
+        self.TEXTFIELD.configure(state=DISABLED)
 
         debug.write("====CHAT: LOG BEGIN====")
 
@@ -630,7 +1459,9 @@ class Bot(commands.Bot):
         try:
             #DEBUG.write(debug_datetime())
             debug.write(f"{ctx.author.name}: {ctx.content}")
-            print(f"{author.name}: {message.content}")
+            self.TEXTFIELD.configure(state='normal')
+            self.TEXTFIELD.insert(END, f"\n{ctx.author.name}: {ctx.content}")
+            self.TEXTFIELD.configure(state=DISABLED)
             
             if author.name in self.botlist: # if any chatbot talks and they haven't been banned for whatever reason, silence them.
                 await ctx.channel.send(f"/timeout {author.name} 5000000")
@@ -657,6 +1488,7 @@ class Bot(commands.Bot):
                 newList = get(f"https://decapi.me/twitch/accountage/{user}").content.decode().split(',')
                 debug.write(f"| - > User Age |> {newList}", False)
                 curAge=newList[0]
+                print(f"============================> new follow {curAge}")
                 
                 for item in newList:
 
@@ -692,7 +1524,10 @@ class Bot(commands.Bot):
                 self.prevage = curAge
 
                 if self.prevage != self.prevprevage and self.prevage != None and self.prevprevage != None:
-                    self.botlist.remove(f"{user}")
+                    try:
+                        self.botlist.remove(f"{user}")
+                    except ValueError:
+                        pass
 
             if "ab!setFTime" == words[0] and is_streamer:
                 if len(words) == 2:
@@ -774,6 +1609,9 @@ class Bot(commands.Bot):
             if "ab!botFuncTest" == words[0] and is_creator:
                 await channel.send("All systems functional, debug successful.")
 
+            if "ping" == words[0] and is_creator:
+                await channel.send("pong")
+
                                     
             'Runs every time a message is sent in chat.'
             # make sure the bot ignores itself and the streamer
@@ -807,10 +1645,52 @@ class Bot(commands.Bot):
 
 if __name__ == "__main__":
     try:
-        bot = Bot()
-        bot.run()
-    except:
-        pass
+        WIDGETS = initialize({'name':'Twitch Counter-Bot V2.0.0', 'geometry':'470x400'}, 'dark', [
+        {'button':{
+            'text':'Stop Bot',
+            'bg':'red',
+            'placemode':'place',
+            'pos':{'x':400, 'y':15},
+            'command': exit
+            }},
+        {'frame':{
+            'placemode':'place',
+            'pos':{'x':0, 'y':60}
+            }},
+        {'text':{
+            'text':'test text',
+            'fg':'white',
+            'bg':'#161616',
+            'placemode':'pack',
+            'width':56,
+            'height':21,
+            'master':{'widgetIndex':1},
+            'side':LEFT,
+            'relief':'flat'
+            }},
+        {'scrollbar':{
+            'placemode':'pack',
+            'master':{'widgetIndex':1},
+            'side':LEFT,
+            'ipady':135,
+            'ipadx':1
+            }}
+        ])
+        bot = Bot(WIDGETS[1][2], WIDGETS[0][0])
+        def start_new_thread(btn):
+            newThread = threading.Thread(target=bot.update_window, daemon=True)
+            newThread.start()
+            new2 = threading.Thread(target=bot.run, daemon=True)
+            new2.start()
+            btn.destroy()
+        newButton = Button(WIDGETS[0][0], text='Start Bot', command=lambda:start_new_thread(newButton), bg='green', fg='#000000', relief='flat')
+        newButton.place(x=10, y=15)
+        WIDGETS[1][2].configure(yscroll=WIDGETS[1][3].set)
+        WIDGETS[1][3].configure(command=WIDGETS[1][2].yview)
+        WIDGETS[1][2].configure(state=DISABLED)
+        WIDGETS[0][0].mainloop()
+    except Exception as e:
+        print(str(e))
 
 debug.write("<<--Shutting Down-->>")
-
+# I am so sorry the code is messy. I'll try to clean it up soon but it's been a long time and getting it to work is honestly my only goal for today (August 17, 2021)
