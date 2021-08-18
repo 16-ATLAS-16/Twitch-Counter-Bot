@@ -1,19 +1,23 @@
 Hi! 
 
-If you're reading this you visit this repo rather often.
-Thank you for sticking around, I'm still rather new to this I won't lie.
+If you're reading this, I hope you're impressed with version 2.0!
+In version 2.1 I plan to add a couple new features that I feel I missed in release 2.0:
 
-Anyways, this file from now on will contain all the planned updates and improvements in the next update of the bot.
+UI changes:
+1) Add the option to load different .env files (this was an option originally and I totally missed it on this release)
+2) Add the option to pause and resume chat scroll on main window at rhe press of a button (it can be annoying)
+3) Fix chat scroll so that it automatically scrolls to latest messages unless scroll is paused
+4) Add trigger event displays for things like bot raid detection, follow triggers, and general command triggers. (colours maybe?)
 
-Starting with v2.0.0 , the console window will no longer be around to confuse yall.
-Instead, there will be a UI for both the setup and main cycle that will contain all the info you need to successfully run the bot!
+Fixes and tweaks:
+1) Tweak bot recognition slightly so that coincidental matches are no longer detected as possible bots. This doesn't happen often but still can happen so I will try my best to correct it.
+2) Fix logging so it looks a bit cleaner. Overall it's a mess right now even though I tried my best a month ago when I created the logging feature XD
+3) Fix main screen display so that it doesn't all look the same (maybe colour variation)
 
-Coming with the UI will also be a possible linux release which will have the same features, but yknow, on linux. 
+Extras:
+1) Linux support? (Been trying for a while, almost there XD)
+2) More UI controls, maybe a light theme toggle?
+3) Support discord? Tbh I might just create a discord in general and have a section of it devoted to this.
 
-Last but not least, there will be some extra options that are already present in the code but aren't official. These will help moderators on mobile devices manage twitch better from your chat. (We all know twitch won't add mod view to mobile)
-
-
-
-That said, I'd like to thank you once again for sticking with me through this journey. I'll try to include a discord for general help and chatting soon too, that way yall can recommend stuff directly and I can add it (uless you wanna code it yourself idk XD)
-
-Anyways, that's it for this update. It's what, 11PM now? Think I'll go watch twitch and see what else I can toss in for later.
+Welp, that's it for this update. See yall in v2.1 and its update log XD
+Thanks for coming to my TED talk.
