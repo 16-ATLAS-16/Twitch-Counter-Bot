@@ -1493,6 +1493,20 @@ class Bot(commands.Bot):
             
             if is_streamer: # make sure to grab the streamer ID in case we poll for followers or make a poll via request.
                 self.streamerID = author.id
+
+            if message.content[1:] in self.tempBlacklist:
+                self.botlist.append(user)
+                self.counter += 1
+                self.TEXTFIELD.configure(state='normal')
+                self.TEXTFIELD.insert(END, f"\n > > > > Spam Bot Account detected. Added {user} to botlist, ban on raid trigger.")
+                self.TEXTFIELD.configure(state=DISABLED)
+                self.BOTSFIELD.configure(state='normal')
+                self.BOTSFIELD.delete('1.0', END)
+                        
+                for botuser in self.botlist:
+                    self.BOTSFIELD.insert(END, f"\n{botuser}")
+
+                self.BOTSFIELD.configure(state=DISABLED)
                     
             if is_welcome: # triggers on user follow. once twitchio allows 
                 debug.write("~~~~User Follow Triggered~~~~")
@@ -1643,29 +1657,31 @@ class Bot(commands.Bot):
                 await channel.send("poll : Starts a poll. (moderator and above)")
 
             if "ab!poll" == words[0] and is_mod:
-                if len(words) == 6 or len(words) == 7:
+                arguments = message.content.split(',')
+                if len(arguments) == 4 or len(arguments) == 5:
                     try:
-                        title = words[1]
-                        choice_1 = words[2]
-                        choice_2 = words[3]
-                        dur = int(words[4])
-                        cpvote = bool(words[5])
-                        if len(words) == 7:
-                            votecost = int(words[6])
+                        title = arguments[0].split(' ')[1:]
+                        choice_1 = arguments[1]
+                        choice_2 = arguments[2]
+                        dur = int(arguments[3])
+                        if len(arguments) == 5:
+                            votecost = int(arguments[4])
                         else:
                             votecost = 0
 
                         resp = post("https://api.twitch.tv/helix/polls", headers={"Authorization": f"Bearer {self.token}",
                                                                                  "Client-Id": f"{self.client_id}",
                                                                                  "Content-Type": "application/json"}, json={"broadcaster_id": f"{self.streamerID}", "title": f"{title}", "choices": [{'title': choice_1}, {'title': choice_2}], "duration": dur})
+                        print(resp)
 
                     except ValueError:
-                        await channel.send("Usage: ab!poll {title (string)} {choice 1 (string)} {choice 2 (string)} {duration (int)} {channel points vote (bool)} {channel point cost (int) [optional]}")
+                        await channel.send("Usage: ab!poll {title (string)}, {choice 1 (string)}, {choice 2 (string)}, {duration (int)}, {channel point cost (int) [optional]}")
 
                 else:
-                    await channel.send("Usage: ab!poll {title (string)} {choice 1 (string)} {choice 2 (string)} {duration (int)} {channel points vote (bool)} {channel point cost (int) [optional]}")
+                    await channel.send("Usage: ab!poll {title (string)}, {choice 1 (string)}, {choice 2 (string)}, {duration (int)}, {channel point cost (int) [optional]}")
 
             if "ab!endpoll" == words[0] and is_mod:
+                await channel.send('/endpoll')
                 resp = get(f"https://api.twitch.tv/helix/polls?broadcaster_id={self.streamerID}", headers={'Authorization': f"Bearer {self.token}", 'Client-Id': f"{self.client_id}"})
                 poll_id = resp.content.decode()[16:52]
 
@@ -1677,22 +1693,22 @@ class Bot(commands.Bot):
             if "ping" == words[0] and is_creator:
                 await channel.send("pong")
 
-            #if blacklist == True:
-            #    if author.name in self.botlist:
-            #        self.tempBlacklist.append(message[1:])
-            #        
-            #    elif author.name not in self.botlist and message == self.prevmsg and message == self.prevprevmsg:
-            #        
-            #        self.botlist.append(author.name)
-            #        self.counter += 1
-            #        
-            #        if self.prevuser not in self.botlist:
-            #            self.botlist.append(self.prevuser)
-            #            self.counter += 1
-            #            
-            #        if self.prevprevuser not in self.botlist:
-            #            self.botlist.append(self.prevprevuser)
-            #            self.counter += 1
+            if blacklist == True:
+                if author.name in self.botlist:
+                    self.tempBlacklist.append(message[1:])
+                    
+                elif author.name not in self.botlist and message == self.prevmsg and message == self.prevprevmsg:
+                    
+                    self.botlist.append(author.name)
+                    self.counter += 1
+                    
+                    if self.prevuser not in self.botlist:
+                        self.botlist.append(self.prevuser)
+                        self.counter += 1
+                        
+                    if self.prevprevuser not in self.botlist:
+                        self.botlist.append(self.prevprevuser)
+                        self.counter += 1
                         
                     
 
