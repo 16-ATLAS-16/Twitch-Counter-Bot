@@ -2,6 +2,7 @@
 import os
 import sys
 from twitchio.ext import commands
+import twitchio
 from requests import get
 from requests import delete
 from requests import post
@@ -12,8 +13,11 @@ import dotenv
 import tkinter
 from tkinter import *
 from tkinter import ttk
+from tkinter import filedialog as fd
 import webbrowser
 import threading
+import concurrent.futures
+import asyncio
 
 dotenv.load_dotenv()
 
@@ -1013,10 +1017,176 @@ def addToBlacklist(source, List):
 
         elif len(source.get()) == 0:
             spawnErrorText('Can\'t add blank to list', [source.winfo_x()+15, source.winfo_y()+30], errs, source)
+
+class ToolTip(object):
+
+    def __init__(self, widget):
+        self.widget = widget
+        self.tipwindow = None
+        self.id = None
+        self.x = self.y = 0
+
+    def showtip(self, text, offsetX, offsetY):
+        "Display text in tooltip window"
+        self.text = text
+        if self.tipwindow or not self.text:
+            return
+        x, y, cx, cy = self.widget.bbox("insert")
+        x = x + self.widget.winfo_rootx() + offsetX
+        y = y + cy + self.widget.winfo_rooty() + offsetY
+        self.tipwindow = tw = Toplevel(self.widget)
+        tw.wm_overrideredirect(1)
+        tw.wm_geometry("+%d+%d" % (x, y))
+        try:
+            # For Mac OS
+            tw.tk.call("::tk::unsupported::MacWindowStyle",
+                       "style", tw._w,
+                       "help", "noActivates")
+        except TclError:
+            pass
+        label = Label(tw, text=self.text, justify=LEFT,
+                      background="#ffffe0", relief=SOLID, borderwidth=1,
+                      font=("tahoma", "8", "normal"))
+        label.pack(ipadx=1)
+
+    def hidetip(self):
+        tw = self.tipwindow
+        self.tipwindow = None
+        if tw:
+            tw.destroy()
+
+def createToolTip(widget, text, offsets=[0, 0]):
+    toolTip = ToolTip(widget)
+    stillHovered = False
+    import time
+    def enter(event):
+        toolTip.showtip(text, offsets[0], offsets[1])
+    def leave(event):
+        stillHovered = False
+        toolTip.hidetip()
+    widget.bind('<Enter>', enter)
+    widget.bind('<Leave>', leave)
     
 greeters=['nightbot', 'streamlabs', 'streamelements']
 
-#create a setup to write initial env variables. can be re-triggered as needed.    
+#create a setup to write initial env variables. can be re-triggered as needed.
+
+#Check for updates
+
+VERSION = '2.1.1'
+
+updateDetails = get('https://github.com/16-ATLAS-16/Twitch-Counter-Bot/releases/latest')
+tempFile = open("updateText.temp", 'wb')
+tempFile.write(updateDetails.content)
+tempFile.close()
+
+pathToSelf = os.getcwd().replace('\\', '/')
+tempFile = open(f"updateText.temp", 'r')
+lineIndex = 1
+updateLine = ''
+for line in tempFile.readlines():
+    if lineIndex == 511:
+        updateLine = line
+    lineIndex += 1
+
+latestVersion = updateLine.split('%')[-1].split('v')[-1][0:-2]
+print(latestVersion)
+
+def selfCheck(osPath):
+    if "Previous Versions" in osPath:
+        tempCounter = 0
+        for subdir in osPath.split('\\'):
+            tempCounter += 1
+
+        tempCounter -= osPath.split('\\').index('Previous Versions')
+        
+        for x in range(tempCounter):
+            os.chdir('../')
+
+        fileVersion = None
+        
+        for filename in os.listdir(os.curdir):
+            if 'Counter-Bot' in filename:
+                fileVersion = filename.split('v')[1].split('-')[0]
+
+        if fileVersion:
+            return True
+
+        else:
+            return False
+
+    else:
+        return False
+        
+
+def update():
+    import struct
+    osBitVersion = struct.calcsize('P')*8
+
+    PATH = f'https://github.com/16-ATLAS-16/Twitch-Counter-Bot/releases/download/v{latestVersion}/Counter-Bot-v{latestVersion}-x{osBitVersion}.zip'
+    print(PATH)
+    print("https://github.com/16-ATLAS-16/Twitch-Counter-Bot/releases/download/v2.1.0/Counter-Bot-v2.1.0-x64.zip")
+    
+    updatedFile = get(f'https://github.com/16-ATLAS-16/Twitch-Counter-Bot/releases/download/v{latestVersion}/Counter-Bot-v{latestVersion}-x{osBitVersion}.zip')
+    print(updatedFile)
+    updatedZip = open(f'Counter-Bot v{latestVersion}.zip', 'wb')
+    updatedZip.write(updatedFile.content)
+
+    import zipfile
+    try:
+        os.mkdir("Previous Versions")
+    except FileExistsError:
+        pass
+
+    try:
+        os.mkdir(f"Previous Versions/{VERSION}")
+    except FileExistsError:
+        pass
+
+    os.rename(f'{pathToSelf}/Counter-Bot-v{VERSION}-x{osBitVersion}.exe', f'{pathToSelf}/Previous Versions/{VERSION}/Counter-Bot-v{VERSION}-x{osBitVersion}.exe')
+    os.rename(f'{pathToSelf}/LICENCE.md', f'{pathToSelf}/Previous Versions/{VERSION}/LICENCE.md')
+    os.rename(f'{pathToSelf}/README.md', f'{pathToSelf}/Previous Versions/{VERSION}/README.md')
+    os.rename(f'{pathToSelf}/Help.txt', f'{pathToSelf}/Previous Versions/{VERSION}/Help.txt')
+    os.rename(f'{pathToSelf}/CHANGELOG.txt', f'{pathToSelf}/Previous Versions/{VERSION}/CHANGELOG.txt')
+    fileToUnpack = zipfile.ZipFile(f'Counter-Bot v{latestVersion}.zip')
+    fileToUnpack.extractall(pathToSelf)
+    os.startfile(f'Counter-Bot-v{latestVersion}-x{osBitVersion}.exe')
+    sys.exit()
+    #https://github.com/16-ATLAS-16/Twitch-Counter-Bot/releases/download/v2.1.1/Counter-Bot-v2.1.0-x64.zip
+
+if latestVersion > VERSION and selfCheck(os.getcwd()) == False:
+    WIDGETS = initialize({'name':'Update Available', 'geometry':'470x100'}, 'dark', [
+                        {'label':{
+                            'font':('TkDefaultFont', 18),
+                            'placemode':'place',
+                            'fg':'white',
+                            'pos':{'x':25, 'y':20},
+                            'text':f'Version {latestVersion} is Available. Download?'
+                            }},
+                        {'button':{
+                            'fg':'black',
+                            'bg':'green',
+                            'text':'Yes',
+                            'placemode':'place',
+                            'pos':{'x':25, 'y':60},
+                            'width':20,
+                            'command':update
+                            }},
+                        {'button':{
+                            'fg':'black',
+                            'bg':'red',
+                            'text':'No',
+                            'placemode':'place',
+                            'pos':{'x':290, 'y':60},
+                            'width':20
+                            }}
+                        ])
+    WIDGETS[0][0].protocol("WM_DELETE_WINDOW", sys.exit)
+    createToolTip(WIDGETS[1][1], 'Download the latest update.\nMay take up to a minute.', [0, 30])
+    createToolTip(WIDGETS[1][2], 'Skip downloading the latest update.\nContinue running this version.', [0, 30])
+    WIDGETS[1][2].configure(command=WIDGETS[0][0].destroy)
+
+    WIDGETS[0][0].mainloop()
         
 #INITIAL SETUP CODE FOR FIRST TIME RUN
 try:
@@ -1025,7 +1195,7 @@ try:
 except FileNotFoundError:
     while 1:
         try:
-            WIDGETS = initialize({'name':'Twitch Counter-Bot v2.0.0 - Setup', 'geometry':'600x400'}, 'dark', [
+            WIDGETS = initialize({'name':f'Twitch Counter-Bot v{VERSION} - Setup', 'geometry':'600x400'}, 'dark', [
                 {'label':{
                     'text':'Twitch Name:',
                     'placemode':'place',
@@ -1180,6 +1350,7 @@ except FileNotFoundError:
                 ])
             errs = []
             bList = []
+            WIDGETS[0][0].protocol("WM_DELETE_WINDOW", sys.exit)
             WIDGETS[-2][10].delete(0,END)
             WIDGETS[-2][10].insert(0,'20')
             WIDGETS[-2][3].delete(0,END)
@@ -1194,6 +1365,7 @@ except FileNotFoundError:
 class settings():
     
     def Load(file=None): #this load notifies the user and writes to debug...
+        print(f"LOAD GOT: {file}")
         'Imports custom settings struct from ENV or file specified'
 
         def LoadEnv(customFile=False, filepath=None):
@@ -1212,6 +1384,7 @@ class settings():
                     debug.write("Attempting settings load from file specified: " + str(file), False)
 
                     try:
+                        copy_env = open(file, 'rb').read()
                         os.remove(".env.bkp")
                     except:
                         pass
@@ -1222,50 +1395,37 @@ class settings():
                 else:
                     debug.write("Attempting settings load from file specified: " + str(new_file), False)
                 try:
-                    copy_env = open(file, 'rb').read()
                     paste_env = open(".env", 'wb')
                     paste_env.write(copy_env)
                     paste_env.close()
+                    dotenv.load_dotenv()
                 except FileNotFoundError:
-                    pass
+                    print("not found")
 
 
             try:
 
-                if sys.platform == 'win32':
-                    channel = os.environ["CHANNEL"]
-                    bot_cap = os.environ["BOT_CAP"]
-                    blacklist = os.environ["AUTO_BLACKLIST"]
-                    blacklisted_words = os.environ["BLACKLISTED_WORDS"]
-                    greeter = os.environ["GREETER_NAME"]
-                    username_index = os.environ["GREETER_INDEX"]
-                    welcome_marker = os.environ["WELCOME_MARKER"]
-                    follow_time = os.environ["FOLLOWERS_TIME"]
-                    tkn = os.environ["TKN"]
+                def find_setting(setting_name=None):
+                    all_settings = open('.env', 'r').read().split('\n')
+                    setting_to_return = None
 
-                else:
+                    for setting in all_settings:
+                        if setting_name in setting:
+                            setting_to_return = setting.split('=')[1]
+                            break
 
-                    def find_setting(setting_name=None):
-                        all_settings = open('.env', 'r').read().split('\n')
-                        setting_to_return = None
-
-                        for setting in all_settings:
-                            if setting_name in setting:
-                                setting_to_return = setting.split('=')[1]
-                                break
-
-                        return setting_to_return
+                    return setting_to_return
 
 
-                    channel = find_setting("CHANNEL")
-                    bot_cap = find_setting("BOT_CAP")
-                    blacklist = find_setting("AUTO_BLACKLIST")
-                    blacklisted_words = find_setting("BLACKLISTED_WORDS")
-                    greeter = find_setting("GREETER_NAME")
-                    username_index = find_setting("GREETER_INDEX")
-                    welcome_marker = find_setting("WELCOME_MARKER")
-                    follow_time = find_setting("FOLLOWERS_TIME")
-                    tkn = find_setting("TKN")
+                channel = find_setting("CHANNEL")
+                bot_cap = find_setting("BOT_CAP")
+                blacklist = find_setting("AUTO_BLACKLIST")
+                blacklisted_words = find_setting("BLACKLISTED_WORDS")
+                greeter = find_setting("GREETER_NAME")
+                username_index = find_setting("GREETER_INDEX")
+                welcome_marker = find_setting("WELCOME_MARKER")
+                follow_time = find_setting("FOLLOWERS_TIME")
+                tkn = find_setting("TKN")
                     
                 debug.write(f"(OS: {sys.platform} |> Successfully loaded settings:")
                     
@@ -1302,8 +1462,7 @@ class settings():
                     os.rename(".env.bkp", ".env")
 
 
-        file = None
-        customFile = False
+        customFile = file != None
 
         try:
             data = LoadEnv(customFile, file)
@@ -1361,45 +1520,39 @@ class settings():
                     "Token": tkn}
 
         return Settings
-        
-
-
-
-
-                        
-
 # set up the bot
         
 class Bot(commands.Bot):
-    counter = 0
-    botlist = []
-    safelist=[]
-    streamerID = None
 
-    Settings = settings.Load() # load base settings. key names are the same as what's written to debug for the sake of not having to re-write the return value (yes I'm lazy in that way)
-    channelToJoin = Settings.get("Channel")
-    bot_cap = int(Settings.get("Bot Follow Cap"))
-    blacklist = bool(Settings.get("Auto-Blacklist Bot Spam"))
-    blacklisted_words = eval(Settings.get("Blacklisted Words/Phrases"))
-    greeter_name = Settings.get("Bot to Read Welcome From")
-    user_index = int(Settings.get("Username Index in Welcome"))
-    welcome_marker = Settings.get("Welcome Marker Word")
-    follow_duration = Settings.get("Follower Only Time Upon Bot Trigger")
-    client_id="udejckrsxv14xdt43ut43sto8wc5c4"
-    token = Settings.get("Token")
-    scrollToBottom = True
-    tempBlacklist = []
+    def __init__(self, textfield, botfield, bannedfield, window, settingsFile):
+        self.counter = 0
+        self.botlist = []
+        self.safelist=[]
+        self.streamerID = None
 
-    
-    streamerID = None
-    prevage=''
-    prevprevage=''
-    prevuser=''
-    prevprevuser=''
-    prevmsg=''
-    prevprevmsg=''
-
-    def __init__(self, textfield, botfield, bannedfield, window):
+        self.Settings = settings.Load(settingsFile) # load base settings. key names are the same as what's written to debug for the sake of not having to re-write the return value (yes I'm lazy in that way)
+        self.channelToJoin = self.Settings.get("Channel")
+        self.bot_cap = int(self.Settings.get("Bot Follow Cap"))
+        self.blacklist = bool(self.Settings.get("Auto-Blacklist Bot Spam"))
+        self.blacklisted_words = eval(self.Settings.get("Blacklisted Words/Phrases"))
+        self.greeter_name = self.Settings.get("Bot to Read Welcome From")
+        self.user_index = int(self.Settings.get("Username Index in Welcome"))
+        self.welcome_marker = self.Settings.get("Welcome Marker Word")
+        self.follow_duration = self.Settings.get("Follower Only Time Upon Bot Trigger")
+        self.client_id="udejckrsxv14xdt43ut43sto8wc5c4"
+        self.token = self.Settings.get("Token")
+        self.scrollToBottom = True
+        self.tempBlacklist = []
+        
+        self.streamerID = None
+        self.prevage=''
+        self.prevprevage=''
+        self.prevuser=''
+        self.prevprevuser=''
+        self.prevmsg=''
+        self.prevprevmsg=''
+        self.PASS = False
+        self.iteratingBots = False
 
         super().__init__(
     token=f"{self.token}",
@@ -1415,6 +1568,8 @@ class Bot(commands.Bot):
         self.WINDOW = window
         self.BOTSFIELD = botfield
         self.BANNED = bannedfield
+        self.settingsFile = settingsFile
+        print(self.settingsFile)
 
     def update_window(self):
         while True:
@@ -1438,6 +1593,8 @@ class Bot(commands.Bot):
 
         debug.write("====CHAT: LOG BEGIN====")
 
+    
+
 
     #@bot.event
     async def event_message(self, ctx):
@@ -1456,6 +1613,8 @@ class Bot(commands.Bot):
         words = message.content.split(' ')
         author = message.author
         channel = message.channel
+        self.sendChannel = channel
+        #print(self.sendChannel)
         try:
             is_welcome = author.name == greeter_name and welcome_marker in words
             is_streamer = author.name == channel.name
@@ -1507,94 +1666,59 @@ class Bot(commands.Bot):
                     self.BOTSFIELD.insert(END, f"\n{botuser}")
 
                 self.BOTSFIELD.configure(state=DISABLED)
-                    
-            if is_welcome: # triggers on user follow. once twitchio allows 
-                debug.write("~~~~User Follow Triggered~~~~")
+            
 
-                user=words[int(user_index)]
-                if '!' in user:
-                    user=user[:-1]
-                debug.write(f"| - > Username |> {user}", False)
+            if len(words) > 1:
+                self.PASS = len(words) == len(self.prevmsg.split(' ')) and words[1:] == self.prevmsg.split(' ')[1:] and words[1:] == self.prevprevmsg.split(' ')[1:] and author.name not in self.botlist and author.name not in self.safelist
                 
-                accAge = get(f"https://decapi.me/twitch/accountage/{user}").content.decode()
-                newList = accAge.split(',')
-                debug.write(f"| - > User Age |> {newList}", False)
-                curAge=newList[0]
-                print(f"============================> new follow {curAge}")
-                self.TEXTFIELD.configure(state='normal')
-                self.TEXTFIELD.insert(END, f"\n<===== New Follower =====>\nUsername: {user} | Account Age {accAge}")
-                self.TEXTFIELD.configure(state=DISABLED)
-                
+            if is_welcome or self.PASS: # triggers on user follow. once twitchio has eventsub support this section will change, but until then I don't fancy writing code when I can just rely on other bots to detect follows. It was already a pain to work with the twitch API as is. #twitchdobetter
+                async def detectFollowBot(self, dummy_text):
+                    print("AND SO DOES THIS") # this is what happens when you do coding at midnight. imma leave it in for the laugh because I'll update the source code in a couple days anyways XD
+                    debug.write("~~~~User Follow Triggered~~~~")
 
-                #print(f"{self.prevage}, {curAge}")
+                    user=words[int(user_index)]
+                    if '!' in user:
+                        user=user[:-1]
+                    debug.write(f"| - > Username |> {user}", False)
                     
-                if curAge == self.prevage and curAge == self.prevprevage:
-                            
-                    if user not in self.botlist and user not in self.safelist:
-                        self.botlist.append(user)
-                        debug.write(f"| - > Added {user} to botlist, user will be banned on bot raid trigger.", False)
-                        self.counter += 1
-                        self.TEXTFIELD.configure(state='normal')
-                        self.TEXTFIELD.insert(END, f"\n > > > > Account age match detected. Added {user} to botlist, ban on raid trigger.")
-                        self.TEXTFIELD.configure(state=DISABLED)
-                            
-                    if self.prevuser not in self.botlist and self.prevuser not in self.safelist:
-                        self.botlist.append(self.prevuser)
-                        debug.write(f"| - > Added {self.prevuser} to botlist, user will be banned on bot raid trigger.", False)
-                        self.counter += 1
-                        self.TEXTFIELD.configure(state='normal')
-                        self.TEXTFIELD.insert(END, f"\n > > > > Added {self.prevuser} to botlist, ban on raid trigger.")
-                        self.TEXTFIELD.configure(state=DISABLED)
+                    accAge = get(f"https://decapi.me/twitch/accountage/{user}").content.decode()
+                    newList = accAge.split(',')
+                    debug.write(f"| - > User Age |> {newList}", False)
+                    curAge=newList[0]
+                    print(f"============================> new follow {curAge}")
+                    self.TEXTFIELD.configure(state='normal')
+                    self.TEXTFIELD.insert(END, f"\n<===== New Follower =====>\nUsername: {user} | Account Age {accAge}")
+                    self.TEXTFIELD.configure(state=DISABLED)
+                    
 
-                    if self.prevprevuser not in self.botlist and self.prevprevuser not in self.safelist:
-                        self.botlist.append(self.prevprevuser)
-                        debug.write(f"| - > Added {self.prevprevuser} to botlist, user will be banned on bot raid trigger.", False)
-                        self.counter += 1
-                        self.TEXTFIELD.configure(state='normal')
-                        self.TEXTFIELD.insert(END, f"\n > > > > Added {self.prevprevuser} to botlist, ban on raid trigger.")
-                        self.TEXTFIELD.configure(state=DISABLED)
-
-                    self.BOTSFIELD.configure(state='normal')
-                    self.BOTSFIELD.delete('1.0', END)
+                    #print(f"{self.prevage}, {curAge}")
                         
-                    for botuser in self.botlist:
-                        self.BOTSFIELD.insert(END, f"\n{botuser}")
-
-                    self.BOTSFIELD.configure(state=DISABLED)
-
-                    
-
-                if self.counter >= int(bot_cap):
-                    debug.write("<<<<BOT RAID DETECTED>>>>")
+                    if curAge == self.prevage and curAge == self.prevprevage:
                                 
-                    await channel.send(f"/followers {follow_duration}")
-                    debug.write(">> Enabled 10 minute Followers-Only Mode.", False)
-                    await channel.send("/clear")
-                    debug.write(">> Cleared Chat to remove any other messages.", False)
-                    self.BANNED.configure(state='normal')
+                        if user not in self.botlist and user not in self.safelist:
+                            self.botlist.append(user)
+                            debug.write(f"| - > Added {user} to botlist, user will be banned on bot raid trigger.", False)
+                            self.counter += 1
+                            self.TEXTFIELD.configure(state='normal')
+                            self.TEXTFIELD.insert(END, f"\n > > > > Account age match detected. Added {user} to botlist, ban on raid trigger.")
+                            self.TEXTFIELD.configure(state=DISABLED)
                                 
-                    for user in self.botlist:
-                                    
-                        await channel.send("/ban " + user + " bot follower.")
-                        debug.write(f">> BOT RAID: BANNED |> {user}", False)
-                        self.BANNED.insert(END, f"{user}")
+                        if self.prevuser not in self.botlist and self.prevuser not in self.safelist:
+                            self.botlist.append(self.prevuser)
+                            debug.write(f"| - > Added {self.prevuser} to botlist, user will be banned on bot raid trigger.", False)
+                            self.counter += 1
+                            self.TEXTFIELD.configure(state='normal')
+                            self.TEXTFIELD.insert(END, f"\n > > > > Added {self.prevuser} to botlist, ban on raid trigger.")
+                            self.TEXTFIELD.configure(state=DISABLED)
 
-                    self.BANNED.configure(state=DISABLED)
+                        if self.prevprevuser not in self.botlist and self.prevprevuser not in self.safelist:
+                            self.botlist.append(self.prevprevuser)
+                            debug.write(f"| - > Added {self.prevprevuser} to botlist, user will be banned on bot raid trigger.", False)
+                            self.counter += 1
+                            self.TEXTFIELD.configure(state='normal')
+                            self.TEXTFIELD.insert(END, f"\n > > > > Added {self.prevprevuser} to botlist, ban on raid trigger.")
+                            self.TEXTFIELD.configure(state=DISABLED)
 
-                    self.counter = 0
-                    self.botlist = []
-                    await channel.send("/followersoff")
-                    debug.write(">> Disabled Followers-Only Mode. Bot raid crisis averted.", False)
-
-                    
-                self.prevprevage = self.prevage
-                self.prevage = curAge
-                self.prevprevuser = self.prevuser
-                self.prevuser=user
-
-                if self.prevage != self.prevprevage and self.prevage != None and self.prevprevage != None:
-                    try:
-                        self.botlist.remove(f"{user}")
                         self.BOTSFIELD.configure(state='normal')
                         self.BOTSFIELD.delete('1.0', END)
                             
@@ -1602,9 +1726,55 @@ class Bot(commands.Bot):
                             self.BOTSFIELD.insert(END, f"\n{botuser}")
 
                         self.BOTSFIELD.configure(state=DISABLED)
-                        
-                    except ValueError:
-                        pass
+
+                    if self.prevage != self.prevprevage and self.prevage != None and self.prevprevage != None:
+                        try:
+                            self.botlist.remove(f"{user}")
+                            self.BOTSFIELD.configure(state='normal')
+                            self.BOTSFIELD.delete('1.0', END)
+                                
+                            for botuser in self.botlist:
+                                self.BOTSFIELD.insert(END, f"\n{botuser}")
+
+                            self.BOTSFIELD.configure(state=DISABLED)
+                            
+                        except ValueError:
+                            pass
+
+                    if self.counter >= int(bot_cap) and self.iteratingBots == False:
+                        self.iteratingBots = True
+                        debug.write("<<<<BOT RAID DETECTED>>>>")
+                                    
+                        await channel.send(f"/followers {follow_duration}")
+                        debug.write(">> Enabled 10 minute Followers-Only Mode.", False)
+                        await channel.send("/clear")
+                        debug.write(">> Cleared Chat to remove any other messages.", False)
+                        self.BANNED.configure(state='normal')
+                                    
+                        while len(self.botlist) != 0:
+
+                            try:
+                                await channel.send("/ban " + self.botlist[0] + " bot follower.")
+                                debug.write(f">> BOT RAID: BANNED |> {user}", False)
+                                self.BANNED.insert(END, f"{user}")
+                                self.counter -= 1
+                                self.botlist.remove(self.botlist[0])
+                                await asyncio.sleep(0.05)
+                            except Exception as e:
+                                pass
+
+                        self.BANNED.configure(state=DISABLED)
+                        await channel.send("/followersoff")
+                        debug.write(">> Disabled Followers-Only Mode. Bot raid shut down.", False)
+
+                    self.prevprevage = self.prevage
+                    self.prevage = curAge
+                    self.prevprevuser = self.prevuser
+                    self.prevuser=user
+
+                print("THIS TRIGGERS")
+                followFinder = threading.Thread(target=await detectFollowBot(self, 'asd'), daemon=True)
+                followFinder.start()
 
             if "ab!setFTime" == words[0] and is_streamer:
                 if len(words) == 2:
@@ -1691,11 +1861,12 @@ class Bot(commands.Bot):
                 await channel.send("All systems functional, debug successful.")
 
             if "ping" == words[0] and is_creator:
+                print("PONG")
                 await channel.send("pong")
 
             if blacklist == True:
                 if author.name in self.botlist:
-                    self.tempBlacklist.append(message[1:])
+                    self.tempBlacklist.append(message.content.split(' ')[1:])
                     
                 elif author.name not in self.botlist and message == self.prevmsg and message == self.prevprevmsg:
                     
@@ -1713,10 +1884,15 @@ class Bot(commands.Bot):
                     
 
             self.prevprevmsg=self.prevmsg    
-            self.prevmsg=message
+            self.prevmsg=message.content
             
         except Exception as e:
-            print(str(e))
+            exc_type, exc_obj, exc_tb = sys.exc_info()
+            if exc_tb.tb_lineno == 1640:
+                pass
+            else:
+                print(str(e))
+                debug.write(f" |>|>|>|>|>|>|>|>|>|> Encountered error: {str(e)} at line {exc_tb.tb_lineno}", False)
 
     async def event_raw_usernotice(self, channel, tags):
         print("join event")
@@ -1732,14 +1908,7 @@ class Bot(commands.Bot):
 
 if __name__ == "__main__":
     try:
-        WIDGETS = initialize({'name':'Twitch Counter-Bot V2.0.0', 'geometry':'940x400'}, 'dark', [
-        {'button':{
-            'text':'Stop Bot',
-            'bg':'red',
-            'placemode':'place',
-            'pos':{'x':875, 'y':15},
-            'command': exit
-            }},
+        WIDGETS = initialize({'name':f'Twitch Counter-Bot v{VERSION}', 'geometry':'940x400'}, 'dark', [
         {'frame':{
             'placemode':'place',
             'pos':{'x':0, 'y':60}
@@ -1751,18 +1920,17 @@ if __name__ == "__main__":
             'placemode':'pack',
             'width':56,
             'height':21,
-            'master':{'widgetIndex':1},
+            'master':{'widgetIndex':0},
             'side':LEFT,
             'relief':'flat'
             }},
         {'scrollbar':{
             'placemode':'pack',
-            'master':{'widgetIndex':1},
+            'master':{'widgetIndex':0},
             'side':LEFT,
-            'ipady':135,
+            'ipady':145,
             'ipadx':1,
             'bg':'#323232',
-            'activebackground':'#323232',
             'troughcolor':'#323232'
             }},
         {'frame':{
@@ -1776,18 +1944,17 @@ if __name__ == "__main__":
             'placemode':'pack',
             'width':26,
             'height':19,
-            'master':{'widgetIndex':4},
+            'master':{'widgetIndex':3},
             'side':LEFT,
             'relief':'flat'
             }},
         {'scrollbar':{
             'placemode':'pack',
-            'master':{'widgetIndex':4},
+            'master':{'widgetIndex':3},
             'side':LEFT,
-            'ipady':125,
+            'ipady':128,
             'ipadx':1,
             'bg':'#323232',
-            'activebackground':'#323232',
             'troughcolor':'#323232'
             }},
         {'frame':{
@@ -1801,19 +1968,19 @@ if __name__ == "__main__":
             'placemode':'pack',
             'width':27,
             'height':19,
-            'master':{'widgetIndex':7},
+            'master':{'widgetIndex':6},
             'side':LEFT,
             'relief':'flat'
             }},
         {'scrollbar':{
             'placemode':'pack',
-            'master':{'widgetIndex':7},
+            'master':{'widgetIndex':6},
             'side':LEFT,
-            'ipady':125,
+            'ipady':128,
             'ipadx':1,
             'bg':'#323232',
-            'highlightbackground':'#323232',
-            'troughcolor':'#323232'
+            'troughcolor':'#323232',
+            'height':20
             }},
         {'label':{
             'placemode':'place',
@@ -1829,29 +1996,83 @@ if __name__ == "__main__":
             'fg':'orange',
             'font':('TkDefaultFont', 14)
             }},
+        {'label':{
+            'text':'Settings File: Default',
+            'placemode':'place',
+            'pos':{'x':210, 'y':17}
+            }},
+        {'button':{
+            'text':'Override Settings',
+            'placemode':'place',
+            'pos':{'x':100, 'y':15}
+            }}
         ])
-        bot = Bot(WIDGETS[1][2], WIDGETS[1][-2], WIDGETS[1][-1], WIDGETS[0][0])
+        global selFile
+        selFile = None
+
+        def chooseFile(textWidget=None):
+            filetypes = (
+                ('Environment Variables Files', '*.env'),
+                ('Environment Variables Files', '*.env'),
+                ('Environment Variable Backups', '*.bkp')
+            )
+
+            filename = fd.askopenfilename(
+                title='Select a settings file',
+                initialdir=os.getcwd(),
+                filetypes=filetypes)
+
+            selfPath = os.getcwd().replace('\\', '/')
+            if filename == f'{selfPath}/.env':
+                filename = None
+
+            if textWidget:
+                if filename:
+                    textWidget['text'] = f'Settings File: {filename}'
+                else:
+                    textWidget['text'] = f'Settings File: Default'
+
+            exec('global selFile\nselFile = filename')
         
         def start_new_thread(btn):
-            newThread = threading.Thread(target=bot.update_window, daemon=True)
-            newThread.start()
+            bot = Bot(WIDGETS[1][1], WIDGETS[1][4], WIDGETS[1][7], WIDGETS[0][0], selFile)
+            
             new2 = threading.Thread(target=bot.run, daemon=True)
             new2.start()
+            
+            newThread = threading.Thread(target=bot.update_window, daemon=True)
+            newThread.start()
+            
             btn.destroy()
+            WIDGETS[1][11].destroy()
+            WIDGETS[1][12].destroy()
+            
             pauseScroll = boolButton(states={'on':{'text':'Pause Chat Scroll', 'bg':'red', 'fg':'black'}, 'off':{'text':'Resume Chat Scroll', 'bg':'green', 'fg':'black'}}, defaultValue=True, master=WIDGETS[0][0], toggleCommand=lambda value: bot.updateScroll(pauseScroll.value))
             pauseScroll.place(x=10, y=15)
             
+            stopButton = Button(text='Stop Bot', bg='red', relief='flat', command=sys.exit)
+            stopButton.place(x=875, y=15)
+            
         newButton = Button(WIDGETS[0][0], text='Start Bot', command=lambda:start_new_thread(newButton), bg='green', fg='#000000', relief='flat')
         newButton.place(x=10, y=15)
-        WIDGETS[1][2].configure(yscroll=WIDGETS[1][3].set)
-        WIDGETS[1][3].configure(command=WIDGETS[1][2].yview)
-        WIDGETS[1][5].configure(yscroll=WIDGETS[1][6].set)
-        WIDGETS[1][6].configure(command=WIDGETS[1][5].yview)
-        WIDGETS[1][8].configure(yscroll=WIDGETS[1][9].set)
-        WIDGETS[1][9].configure(command=WIDGETS[1][8].yview)
-        WIDGETS[1][2].configure(state=DISABLED)
-        WIDGETS[1][5].configure(state=DISABLED)
-        WIDGETS[1][8].configure(state=DISABLED)
+        
+        WIDGETS[1][1].configure(yscroll=WIDGETS[1][2].set)
+        WIDGETS[1][2].configure(command=WIDGETS[1][1].yview)
+        
+        WIDGETS[1][4].configure(yscroll=WIDGETS[1][5].set)
+        WIDGETS[1][5].configure(command=WIDGETS[1][4].yview)
+        
+        WIDGETS[1][7].configure(yscroll=WIDGETS[1][8].set)
+        WIDGETS[1][8].configure(command=WIDGETS[1][7].yview)
+
+        print(WIDGETS[1][1], WIDGETS[1][4], WIDGETS[1][7])
+        
+        WIDGETS[1][1].configure(state=DISABLED)
+        WIDGETS[1][4].configure(state=DISABLED)
+        WIDGETS[1][7].configure(state=DISABLED)
+
+        WIDGETS[1][12].configure(command=lambda: chooseFile(WIDGETS[1][11]))
+        
         WIDGETS[0][0].mainloop()
     except Exception as e:
         print(str(e))
