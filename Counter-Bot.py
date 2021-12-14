@@ -1408,7 +1408,7 @@ greeters=['nightbot', 'streamlabs', 'streamelements']
 #Check for updates
 
 VERSION = '2.1.19'
-devVersion = 'beta (oct. 30)'
+devVersion = 'beta (dec. 13)'
 
 latestVersion = get('https://github.com/16-ATLAS-16/Twitch-Counter-Bot/releases/latest').url.split('/tag/')[1].split('v')[1]
 print(latestVersion)
@@ -2113,7 +2113,7 @@ except FileNotFoundError:
                      },
                     {'button':{
                               'text':'Get token link',
-                              'command':lambda: openLink('https://id.twitch.tv/oauth2/authorize?client_id=7583ak4tqsqbnpbdoypfpg2h0ie4tu&redirect_uri=http://localhost&response_type=token+id_token&scope=openid+channel:read:editors+moderator:manage:automod+channel:read:hype_train+channel:read:polls+channel:read:predictions+channel:read:redemptions+channel:read:subscriptions+moderation:read+user:edit+user:read:broadcast+user:read:email+user:read:follows+user:read:subscriptions+channel:moderate+chat:edit+chat:read+whispers:read+whispers:edit+channel:manage:polls'),
+                              'command':lambda: openLink('https://id.twitch.tv/oauth2/authorize?client_id=7583ak4tqsqbnpbdoypfpg2h0ie4tu&redirect_uri=http://localhost&response_type=token+id_token&scope=openid+channel:read:editors+moderator:manage:automod+channel:read:hype_train+channel:read:polls+channel:manage:polls+channel:read:predictions+channel:read:redemptions+channel:read:subscriptions+moderation:read+user:edit+user:read:broadcast+user:read:email+user:read:follows+user:read:subscriptions+channel:moderate+chat:edit+chat:read+whispers:read+whispers:edit+channel:manage:polls'),
                               'placemode':'place',
                               'pos':{'x':260,'y':45},
                               'width':14
@@ -2237,7 +2237,7 @@ except FileNotFoundError:
                      },
                     {'button':{
                               'text':'Get token link',
-                              'command':lambda: openLink('https://id.twitch.tv/oauth2/authorize?client_id=7583ak4tqsqbnpbdoypfpg2h0ie4tu&redirect_uri=http://localhost&response_type=token+id_token&scope=openid+channel:read:editors+moderator:manage:automod+channel:read:hype_train+channel:read:polls+channel:read:predictions+channel:read:redemptions+channel:read:subscriptions+moderation:read+user:edit+user:read:broadcast+user:read:email+user:read:follows+user:read:subscriptions+channel:moderate+chat:edit+chat:read+whispers:read+whispers:edit+channel:manage:polls'),
+                              'command':lambda: openLink('https://id.twitch.tv/oauth2/authorize?client_id=7583ak4tqsqbnpbdoypfpg2h0ie4tu&redirect_uri=http://localhost&response_type=token+id_token&scope=openid+channel:read:editors+moderator:manage:automod+channel:read:hype_train+channel:read:polls+channel:manage:polls+channel:read:predictions+channel:read:redemptions+channel:read:subscriptions+moderation:read+user:edit+user:read:broadcast+user:read:email+user:read:follows+user:read:subscriptions+channel:moderate+chat:edit+chat:read+whispers:read+whispers:edit+channel:manage:polls'),
                               'placemode':'place',
                               'pos':{'x':260,'y':45},
                               'width':14
@@ -2779,6 +2779,11 @@ class Bot(commands.Bot):
                 BOTSWINDOW.configure(state=DISABLED)
 
         print(self.CHANNELS)
+
+        Authorization = get('https://id.twitch.tv/oauth2/validate', headers={'client_id':self.client_id, 'Authorization':f'Bearer {self.token}'})
+        self.USE_ID = eval(Authorization.content.decode())['client_id']
+
+        
 
     def change_channel(self, callingMenu, widgetsList):
 
@@ -3403,8 +3408,14 @@ class Bot(commands.Bot):
 
         self.CHN = channel
 
-        print(channel.name)
-        
+        print(channel.name, message.tags)
+        if len(message.tags) > 0:
+            if message.tags['first-msg'] == '1':
+                if words[0:4] == ['Buy', 'followers', 'and', 'viewers'] or words[0:4] == ['Buy', 'viewers', 'and', 'followers'] or words[0:4] == ['Want', 'to', 'become', 'famous?']:
+                    import random
+                    msg = random.choice(['No thank you. Take your stuff elsewhere.', 'Bot used Frying Pan! It\'s super effective! Wild Ad-bot has fainted!', 'How about you go ask Spamton to be a [BIG SHOT] instead?'])
+                    await channel.send(f'/ban {author.name} {msg}')
+            
         #print(self.sendChannel)
         try:
             is_welcome = author.name == greeter_name and welcome_marker in words
@@ -3555,12 +3566,16 @@ class Bot(commands.Bot):
                 await channel.send("commands : Displays this set of messages (broadcaster only)")
                 await channel.send("help : Displays this set of messages (broadcaster only)")
                 await channel.send("poll : Starts a poll. (moderator and above)")
+                TEXTFIELD.configure(state='normal')
+                TEXTFIELD.insert(END, f'\nINVOKE {author.name}', ('command'))
+                TEXTFIELD.insert(END, f' invoked commands (Command List Display)', ('info'))
+                TEXTFIELD.configure(state=DISABLED)
 
             if "ab!poll" == words[0] and is_mod:
                 arguments = message.content.split(',')
                 if len(arguments) == 4 or len(arguments) == 5:
                     try:
-                        title = arguments[0].split(' ')[1:]
+                        title = ' '.join(arguments[0].split(' ')[1:])
                         choice_1 = arguments[1]
                         choice_2 = arguments[2]
                         dur = int(arguments[3])
@@ -3569,10 +3584,10 @@ class Bot(commands.Bot):
                         else:
                             votecost = 0
 
-                        resp = post("https://api.twitch.tv/helix/polls", headers={"Authorization": f"Bearer {self.token}",
-                                                                                 "Client-Id": f"{self.client_id}",
+                        resp = post("https://api.twitch.tv/helix/polls", headers={'Authorization': f"Bearer {self.token}",
+                                                                                 "Client-Id": f'{self.USE_ID}',
                                                                                  "Content-Type": "application/json"}, json={"broadcaster_id": f"{CHID}", "title": f"{title}", "choices": [{'title': choice_1}, {'title': choice_2}], "duration": dur})
-                        print(resp)
+                        print(resp.content, CHID, self.client_id)
 
                     except ValueError:
                         await channel.send("Usage: ab!poll {title (string)}, {choice 1 (string)}, {choice 2 (string)}, {duration (int)}, {channel point cost (int) [optional]}")
@@ -3581,11 +3596,11 @@ class Bot(commands.Bot):
                     await channel.send("Usage: ab!poll {title (string)}, {choice 1 (string)}, {choice 2 (string)}, {duration (int)}, {channel point cost (int) [optional]}")
 
             if "ab!endpoll" == words[0] and is_mod:
-                await channel.send('/endpoll')
-                resp = get(f"https://api.twitch.tv/helix/polls?broadcaster_id={self.streamerID}", headers={'Authorization': f"Bearer {self.token}", 'Client-Id': f"{self.client_id}"})
+                #await channel.send('/endpoll')
+                resp = get(f"https://api.twitch.tv/helix/polls?broadcaster_id={CHID}", headers={'Authorization': f"Bearer {self.token}", 'Client-Id': f"{self.USE_ID}"})
                 poll_id = resp.content.decode()[16:52]
 
-                patch('https://api.twitch.tv/helix/polls', headers={"Authorization": f"Bearer {self.token}", "Client-Id": f"{self.client_id}", "Content-Type": "application/json"}, json={"broadcaster_id": f"{CHID}", "id": f"{poll_id}", "status": "TERMINATED"})
+                patch('https://api.twitch.tv/helix/polls', headers={"Authorization": f"Bearer {self.token}", "Client-Id": f"{self.USE_ID}", "Content-Type": "application/json"}, json={"broadcaster_id": f"{CHID}", "id": f"{poll_id}", "status": "TERMINATED"})
 
             if "ab!botFuncTest" == words[0] and is_creator:
                 await channel.send("All systems functional, debug successful.")
