@@ -67,7 +67,7 @@ class WebHook:
 
 			#TODO -> implement check for valid response
 			if not request.args:
-				return Response("Bad request", 400)
+				return 400
 			
 			if True:
 				current_app.PARENT.KEY = ''.join(random.choices(string.ascii_lowercase, k=16))
@@ -84,15 +84,16 @@ class WebHook:
 			"""Used for thread-safe shutdown."""
 			
 			if current_app.PARENT.KEY is None:
-				return Response("Bad Request", 400)
+				return 401
+			
 			elif current_app.PARENT.KEY == urllib.parse.parse_qs(key)['key'][0]:
 				retcode = current_app.PARENT.outputData(urllib.parse.parse_qs(key)['args'], True, False)
 				if retcode:
-					return Response("", 204)
+					return 204
 				else:
-					return Response("Bad Request", 400)
+					return 400
 			else:
-				return Response("Forbidden", 403)
+				return 403
 
 		def run(self):
 			authHookProcess = self.ServerThread(self.app, self)
