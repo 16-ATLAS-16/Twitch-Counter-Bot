@@ -38,7 +38,7 @@ class WebHook:
 				self.server.serve_forever()
 			def shutdown(self):
 				self.server.shutdown()
-		
+
 		def outputData(self, data=None, affResp: any = None, negResp: any = None):
 			"""Puts data into the output queue.
 			
@@ -53,35 +53,29 @@ class WebHook:
 			else:
 				return negResp
 
-		@app.route('/', methods=["POST", "GET"])
+		@app.route('/', methods=["GET"])
 		def home():
 			"""Homepage.
 			Redirects to /webhook if query data is present"""
-			if request.method == "POST":
-				if request.json:
-					try:
-						return redirect(f"http://{current_app.PARENT.HOST}:{current_app.PARENT.PORT}/webhook/{urllib.parse.urlencode(request.json)}")
-					except TypeError:
-						return 400
-				else:
-					return 400
-			else:
-					return redirect(f'http://{current_app.PARENT.HOST}:{current_app.PARENT.PORT}/shutdown')
 
-		@app.route('/webhook/<data>', methods=["GET"])
-		def webhook(data):
+			return redirect(f"/webhook?{urllib.parse.urlencode(request.args)}")
+
+		@app.route('/webhook', methods=["GET"])
+		def webhook():
 			"""Main webhook path.
 			Used as redirect target if homepage is visited"""
 
 			#TODO -> implement check for valid response
-			args = urllib.parse.parse_qs(data)
+			if not request.args:
+				return Response("Bad request", 400)
+			
 			if True:
 				current_app.PARENT.KEY = ''.join(random.choices(string.ascii_lowercase, k=16))
 				argToPass = {
 					'key': current_app.PARENT.KEY,
-					'args': args
+					'args': dict(request.args)
 				}
-				return redirect(f'http://{current_app.PARENT.HOST}:{current_app.PARENT.PORT}/shutdown/{urllib.parse.urlencode(argToPass)}')
+				return redirect(f'/shutdown/{urllib.parse.urlencode(argToPass)}')
 			else:
 				return 400
 
@@ -96,9 +90,9 @@ class WebHook:
 				if retcode:
 					return Response("", 204)
 				else:
-					return Response("Bad Request.", 400)
+					return Response("Bad Request", 400)
 			else:
-				return Response("Forbidden.", 403)
+				return Response("Forbidden", 403)
 
 		def run(self):
 			authHookProcess = self.ServerThread(self.app, self)
@@ -109,3 +103,6 @@ class WebHook:
 			if outValue:
 				authHookProcess.shutdown()
 				return outValue
+
+a = WebHook.AuthHook()
+print(a.run())
