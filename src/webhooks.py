@@ -81,7 +81,7 @@ class WebHook:
 
 		@app.route('/shutdown/<key>')
 		def shutdown(key):
-			"""Used for thread-safe shutdown."""
+			"""Used for thread-safe shutdown"""
 			
 			if current_app.PARENT.KEY is None:
 				return 401
@@ -104,6 +104,3 @@ class WebHook:
 			if outValue:
 				authHookProcess.shutdown()
 				return outValue
-
-a = WebHook.AuthHook()
-print(a.run())
