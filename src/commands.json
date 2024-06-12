@@ -1,0 +1,5 @@
+{
+    "sync": "await self.process_git_sync(message.content.split(' ')[1], message.channel)",
+    "banall": "await self.ban_all(author, message.author.id, ' '.join(message.content.split(' ')[1:]), message.channel)",
+    "ping": "await message.channel.send('PONG')"
+}
