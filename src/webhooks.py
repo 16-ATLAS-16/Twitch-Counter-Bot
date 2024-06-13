@@ -54,6 +54,10 @@ class WebHook:
         return affResp
       else:
         return negResp
+      
+    @app.before_request
+    def before_request_func():
+      print(request.base_url)
 
     @app.route('/', methods=["GET"])
     def home():
@@ -61,11 +65,33 @@ class WebHook:
 			Redirects to /webhook if query data is present"""
 
       return redirect(f"/webhook?{urllib.parse.urlencode(request.args)}")
+    
+    @app.route('/<path:path>')
+    def catch_all(path):
+      return """
+<!DOCTYPE html>
+<html lang="en-US">
+ 
+<head>
+    <meta charset="UTF-8">
+    <script>
+        var str = "http://localhost:5000/webhook?X"
+        var str2 = str.replace("X", document.location.hash)
+        window.location.replace(str2)
+    </script>
+</head>
+ 
+<body>
+</body>
+ 
+</html>"""
 
-    @app.route('/webhook', methods=["GET"])
-    def webhook():
+    @app.route('/webhook/<kek>', methods=["GET"])
+    def webhook(kek):
       """Main webhook path.
 			Used as redirect target if homepage is visited"""
+
+      return Response('<input type="text" id=test>', 200)
 
       #TODO -> implement check for valid response
       if not request.args:
