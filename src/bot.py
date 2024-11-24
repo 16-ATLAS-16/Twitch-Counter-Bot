@@ -6,7 +6,7 @@ from decapi import getUserAge
 from token_manager import TokenManager
 from typing import *
 from logging import *
-from api.WSEventSub import classes
+from api.WSEventSub import classes as WSSubClasses
 import logging, asyncio
 logging.basicConfig(level=logging.INFO)
   
@@ -39,6 +39,8 @@ class Bot(commands.Bot):
 
   initch = []
   ESClient = None
+
+  subcounter: int = 0
 
   def __init__(self,
                token: str = None,
@@ -87,8 +89,6 @@ class Bot(commands.Bot):
                      nick='nickhere',
                      prefix='prefix',
                      initial_channels=channels)
-    
-    self.ESClient = eventsub.EventSubWSClient(self)
 
     print("INIT PASS")
 
@@ -106,7 +106,8 @@ class Bot(commands.Bot):
       time.sleep(1)
       for user in Bot.suspectedUsers:
         print(user)
-        if time.time() - user["time"] > Bot.TIMEOUT_SECONDS:
+        if time.time() - user["addTime"] > Bot.TIMEOUT_SECONDS:
+          print("UNTRACKED ", user)
           Bot.untrackUser(user)
 
   def updateToken(self):
@@ -207,10 +208,12 @@ class Bot(commands.Bot):
       await chn.send("Done.")
 
   async def check_user(self, user, channel):
-    if user not in Bot.SEEN_USER:
+    if user.name not in [u.name for u in Bot.SEEN_USER]:
         newUserAge = getUserAge(user.name)
 
         try:
+          print("CHANN ", channel, channel.name)
+          print("CHECK! ", channel.name, user)
           recentUsers = Bot.recentAccounts[channel.name]
 
           if newUserAge == recentUsers[0] == recentUsers[1] == recentUsers[2]:
@@ -225,7 +228,10 @@ class Bot(commands.Bot):
         Bot.SEEN_USER.append(user)
 
   async def event_ready(self):
-    await self.sub_all()
+    #await self.sub_all()
+    self.initch = [ch.id for ch in await self.fetch_users(self.initch)]
+    self.ESClient = wsclient.WSEvents(self, self.initch, [WSSubClasses.Follow]) #, WSSubClasses.Subscribe, WSSubClasses.Resubscribe])
+    await self.ESClient.start()
     pass
 
   async def sub_all(self):

@@ -12,7 +12,7 @@
 #w2caxvajbpd5vbcbc2wnsndbi20z2l
 from bot import Bot
 
-bot = Bot(channels=['purexarex', 'sonicgott', 'jtwusky'], token='')
+bot = Bot(channels=['darkwolf80s'], token='')
 bot.loop.create_task(bot.sub_all())
 bot.run()
 input()

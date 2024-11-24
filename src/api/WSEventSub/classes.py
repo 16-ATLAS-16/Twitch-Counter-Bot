@@ -8,6 +8,13 @@ class Follow(SubscriptionType):
     Type = 'channel.follow'
     Version = 2
 
+class Subscribe(SubscriptionType):
+    Type = 'channel.subscribe'
+    Version = 1
+
+class Resubscribe(SubscriptionType):
+    Type = 'channel.subscription.message'
+    Version = 1
 
 
 

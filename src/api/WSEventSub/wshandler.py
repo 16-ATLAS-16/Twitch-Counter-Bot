@@ -1,6 +1,6 @@
 import aiohttp
 import json, requests, twitchio, websocket, threading, asyncio
-from WSEventSub import subscription, exceptions
+from api.WSEventSub import subscription, exceptions
 """ ws = create_connection('ws://127.0.0.1:8080/ws?keepalive_timeout_seconds=60', 600)
 initial = json.loads(ws.recv())
 print(f'SESSION ID IS {str(initial["payload"]["session"]["id"])}')
@@ -56,6 +56,7 @@ class WSHandler:
         self.WSCLIENT = await self.SESSION.ws_connect(f'wss://eventsub.wss.twitch.tv/ws?keepalive_timeout_seconds={self.timeout}', timeout=self.timeout)
 
         setupData = await self.WSCLIENT.receive()
+        print(setupData)
         setupData = json.loads(setupData.data)
         self.SID = setupData['payload']['session']['id']
 
@@ -64,7 +65,7 @@ class WSHandler:
         return self.WSCLIENT
     
     async def __on_reconnect(self, reconnectURL: str):
-        self.WSCLIENT.close()
+        await self.WSCLIENT.close()
         self.WSCLIENT = await self.SESSION.ws_connect(reconnectURL, timeout=self.timeout)
 
     async def __main__(self):
@@ -106,8 +107,32 @@ class WSHandler:
                             print('Network error')
                         case '4007':
                             print('Invalid reconnect')
+                        case 4000:
+                            print("Internal Error")
+                        case 4001:
+                            print('Client sent inbound traffic')
+                        case 4002:
+                            print('Client failed ping-pong')
+                            print("Attempting reconnect.")
+                            await ws.close()
+                            ws = await self.__create_session()
+                        case 4003:
+                            print('Connection unused')
+                        case 4004:
+                            print('Reconnect grace time expired')
+                        case 4005:
+                            print('Network timeout')
+                        case 4006:
+                            print('Network error')
+                        case 4007:
+                            print('Invalid reconnect')
 
                     break
+
+                case aiohttp.WSMsgType.PING:
+                    print("\nPING RECEIVED!")
+                    print(f"{data.type} | {data.data}")
+                    ws.pong(data.data)
 
                 case aiohttp.WSMsgType.TEXT:
 

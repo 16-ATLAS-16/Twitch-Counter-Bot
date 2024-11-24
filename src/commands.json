@@ -1,5 +1,7 @@
 {
     "sync": "await self.process_git_sync(message.content.split(' ')[1], message.channel)",
     "banall": "await self.ban_all(author, message.author.id, ' '.join(message.content.split(' ')[1:]), message.channel)",
-    "ping": "await message.channel.send('PONG')"
+    "ping": "await message.channel.send('PONG')",
+    "subcount": "await message.channel.send(f\"So far {self.subcounter} people have subscribed (gift subs counted as well)\")",
+    "addcount": "\n    if user.name == \"oo_atlas_oo\":\n        self.subcounter += 1\n        await message.channel.send(\"updated.\")\n    else:\n        await message.channel.send(\"This command is not for you to use ;P\")"
 }

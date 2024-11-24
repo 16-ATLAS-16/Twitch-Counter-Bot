@@ -76,25 +76,14 @@ class TokenManager(object):
             redirectUri: str = 'http://localhost:5000/webhook') -> str:
     tokenHook = webhooks.WebHook.AuthHook()
     print("Hook Run")
-    webbrowser.open('https://id.twitch.tv/oauth2/authorize?client_id=7583ak4tqsqbnpbdoypfpg2h0ie4tu&redirect_uri=http://localhost:5000/webhook&response_type=token&scope=openid+channel:read:editors+moderator:manage:automod+moderator:manage:banned_users+moderator:read:followers+channel:read:hype_train+channel:read:polls+channel:manage:polls+channel:read:predictions+channel:read:redemptions+channel:read:subscriptions+moderation:read+user:edit+user:read:broadcast+user:read:email+user:read:follows+user:read:subscriptions+channel:moderate+chat:edit+chat:read+whispers:read+whispers:edit+channel:manage:polls', new=0, autoraise=True)
+    webbrowser.open('https://id.twitch.tv/oauth2/authorize?client_id=7583ak4tqsqbnpbdoypfpg2h0ie4tu&redirect_uri=http://localhost:5000/webhook&response_type=token&scope=openid+channel:read:editors+channel:read:subscriptions+moderator:manage:automod+moderator:manage:banned_users+moderator:read:followers+channel:read:hype_train+channel:read:polls+channel:manage:polls+channel:read:predictions+channel:read:redemptions+channel:read:subscriptions+moderation:read+user:edit+user:read:broadcast+user:read:email+user:read:follows+user:read:subscriptions+channel:moderate+chat:edit+chat:read+whispers:read+whispers:edit+channel:manage:polls', new=0, autoraise=True)
     token = tokenHook.run()
 
     try:
       print("Parse")
-      parsedCode = json.loads(token[0].replace('\'', '"'))['code']
-      returnedData = post(
-        'https://id.twitch.tv/oauth2/token',
-        data={
-          'client_id': clientId,  
-          'client_secret': clientSecret,  
-          'code': parsedCode,
-          'grant_type': 'authorization_code',
-          'redirect_uri': redirectUri  #'http://localhost:5000/webhook'
-        })
-      print("Extract")
-      extractedData = eval(returnedData.content.decode())
+      print(token[0])
+      extractedData = eval(token[0])
       parsedToken = extractedData['access_token']
-      self.refreshToken = extractedData['refresh_token']
       print("Post Extract")
       if len(parsedToken) == 30:
         open('refreshtoken', 'w').write(self.refreshToken)

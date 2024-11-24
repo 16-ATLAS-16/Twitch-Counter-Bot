@@ -1,4 +1,4 @@
-import urllib, threading, sys, queue, random, string, logging
+import urllib, threading, sys, queue, random, string, logging, time
 from flask import Flask, request, render_template, redirect, current_app, Response
 from werkzeug.serving import make_server
 
@@ -9,6 +9,7 @@ class WebHook:
     QUEUE = None
     KEY = None
     app = Flask(__name__)
+    waiting: list = []
 
     def __init__(self,
                  outQueue: queue.Queue = None,
@@ -34,6 +35,7 @@ class WebHook:
         self.server = make_server(parent.HOST, parent.PORT, app)
         self.ctx = app.app_context()
         self.ctx.push()
+        self.parent: WebHook.AuthHook = parent
 
       def run(self):
         self.server.serve_forever()
@@ -58,6 +60,14 @@ class WebHook:
     @app.before_request
     def before_request_func():
       print(request.base_url)
+      current_app.PARENT.waiting.append(request)
+      print(f'Waiting now on {len(current_app.PARENT.waiting)} requests')
+
+    @app.after_request
+    def after_request_func(response):
+      current_app.PARENT.waiting.remove(request)
+      print(f'Waiting now on {len(current_app.PARENT.waiting)} requests')
+      return response
 
     @app.route('/', methods=["GET"])
     def home():
@@ -66,9 +76,16 @@ class WebHook:
 
       return redirect(f"/webhook?{urllib.parse.urlencode(request.args)}")
     
-    @app.route('/<path:path>')
-    def catch_all(path):
-      return """
+#    @app.route('/<path:path>')
+#    def catch_all(path):
+
+    @app.route('/webhook', methods=["GET"])
+    def webhook():
+      """Main webhook path.
+			Used as redirect target if homepage is visited"""
+
+      if not request.args:
+        return """
 <!DOCTYPE html>
 <html lang="en-US">
  
@@ -76,8 +93,8 @@ class WebHook:
     <meta charset="UTF-8">
     <script>
         var str = "http://localhost:5000/webhook?X"
-        var str2 = str.replace("X", document.location.hash)
-        window.location.replace(str2)
+        var str2 = str.replace("X", document.location.hash).replace("#", "")
+        var newWin = window.open(str2, "_self")
     </script>
 </head>
  
@@ -85,17 +102,6 @@ class WebHook:
 </body>
  
 </html>"""
-
-    @app.route('/webhook/<kek>', methods=["GET"])
-    def webhook(kek):
-      """Main webhook path.
-			Used as redirect target if homepage is visited"""
-
-      return Response('<input type="text" id=test>', 200)
-
-      #TODO -> implement check for valid response
-      if not request.args:
-        return Response("Bad request", 400)
 
       if True:
         current_app.PARENT.KEY = ''.join(random.choices(string.ascii_lowercase, k=16))
@@ -106,19 +112,36 @@ class WebHook:
         return redirect(f'/shutdown/{urllib.parse.urlencode(argToPass)}')
       else:
         return 400
+      
+    app.add_url_rule('/webhook/', 'webhook', webhook)
 
     @app.route('/shutdown/<key>')
     def shutdown(key):
       """Used for thread-safe shutdown"""
 
       if current_app.PARENT.KEY is None:
-        return 401
+        print("No key")
+        return Response("", 401)
 
       elif current_app.PARENT.KEY == urllib.parse.parse_qs(key)['key'][0]:
+        print("Key")
         retcode = current_app.PARENT.outputData(
           urllib.parse.parse_qs(key)['args'], True, False)
         if retcode:
-          return Response("", 204)
+          return Response("""<!DOCTYPE html>
+<html lang="en-US">
+ 
+<head>
+    <meta charset="UTF-8">
+    <script>
+        self.close()
+    </script>
+</head>
+ 
+<body>
+</body>
+ 
+</html>""", 200)
         else:
           return Response("Bad Request", 400)
       else:

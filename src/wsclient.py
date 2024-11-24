@@ -1,4 +1,4 @@
-from WSEventSub import wshandler, classes, subscription
+from api.WSEventSub import wshandler, classes, subscription
 from requests import get
 from typing import *
 import twitchio
@@ -7,18 +7,23 @@ class WSEvents(wshandler.WSHandler):
 
     bot = None
 
-    def __init__(self, Client, initial_channels: list[str] = [], initial_types: classes.SubscriptionType = None):
-        fields = initial_types.Fields
-        initCh = [(channel, initial_types.Type) for channel in initial_channels]
+    def __init__(self, Client, initial_channels: list[str] = [], initial_types: list[classes.SubscriptionType] = None):
+        print("I GOT GIVEN ", Client.user_id)
+        initCh = []
+        for channel in initial_channels:
+            for subType in initial_types:
+                initCh.append((channel, subType.Type))
         self.bot = Client
 
         requirements = []
-        print("INIT")
+        print("INIT SUBS")
         for channel in initial_channels:
             print(channel)
-            requirements.append({fields['target']: channel,
-                                 fields['self']: Client.user_id,
-                                 'version': initial_types.Version})
+            for subType in initial_types:
+                fields = subType.Fields
+                requirements.append({fields['target']: channel,
+                                     fields['self']: Client.user_id,
+                                     'version': subType.Version})
         print(initial_channels)
         print(requirements)
             
@@ -29,29 +34,44 @@ class WSEvents(wshandler.WSHandler):
 
     async def on_event(self, metadata: dict = None, payload: dict = None, *args, **kwargs) -> None:
 
-        if metadata['subscription_type'] == 'channel.follow':
+        match metadata['subscription_type']:
+            
+            case 'channel.follow':
 
-            channel = payload['event']['broadcaster_user_id']
-            follower = payload['event']['user_name']
+                channel = payload['event']['broadcaster_user_login']
+                follower = payload['event']['user_name']
+                print("PAYLOAD", payload)
+                print("FOLLOWED!\n", follower, channel)
 
-            a = open('banlist.txt', 'r')
-            users = [line.strip('\n') for line in a.readlines()]
-            a.close()
-            del a
+                a = open('banlist.txt', 'r')
+                users = [line.strip('\n') for line in a.readlines()]
+                a.close()
+                del a
 
-            if follower in users:
-                # do instaban
-                pass
+                if follower in users:
+                    # do instaban
+                    pass
 
-            else:
-                # fetch user that followed
-                usr = await self.bot.fetch_user(follower)
-                chn = await self.bot.fetch_channel(channel)
-                await self.bot.check_user(usr, chn)
+                else:
+                    # fetch user that followed
+                    print(channel, follower)
+                    chn, usr = await self.bot.fetch_users([follower, channel])
+                    #chn = await self.bot.fetch_channels([channel])
+                    print("USER IS ", usr)
+                    print("CHANNEL IS ", chn)
+                    await self.bot.check_user(usr, chn)
 
-                del usr, chn
+                    del usr, chn
 
-            del users, channel, follower
+                del users, channel, follower
+
+            case 'channel.subscribe':
+
+                self.bot.subcounter += 1
+
+            case 'channel.subscription.message':
+
+                self.bot.subcounter += 1
 
     async def on_reconnect(self, payload, *args, **kwargs) -> None:
         print("Reconnected successfully.")
