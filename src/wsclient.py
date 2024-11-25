@@ -55,7 +55,7 @@ class WSEvents(wshandler.WSHandler):
                 else:
                     # fetch user that followed
                     print(channel, follower)
-                    chn, usr = await self.bot.fetch_users([follower, channel])
+                    usr, chn = await self.bot.fetch_users([follower, channel])
                     #chn = await self.bot.fetch_channels([channel])
                     print("USER IS ", usr)
                     print("CHANNEL IS ", chn)

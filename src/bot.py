@@ -118,15 +118,18 @@ class Bot(commands.Bot):
     Bot.suspectedUsers.remove(user)
   
   async def event_join(self, channel, user):
-    newUserAge = getUserAge(user.name)
-    try:
+    #newUserAge = int(round((datetime.now() - user.created_at).total_seconds())
+    print(f"USER {user} CHANNEL {channel}")
+    user = await user.user()
+    await self.check_user(user, channel)
+    """ try:
       recentUsers = Bot.recentAccounts[channel.name]
       if newUserAge == recentUsers[0] == recentUsers[1] == recentUsers[2]:
         self.trackUser(user, channel)
       Bot.recentAccounts.update(
         {channel.name: [newUserAge, recentUsers[0], recentUsers[1]]})
     except KeyError:
-      Bot.recentAccounts.update({channel.name: [None, None, None]})
+      Bot.recentAccounts.update({channel.name: [None, None, None]}) """
 
   async def process_git_sync(self, url: str, channel: str):
     CHANNEL = channel
@@ -208,8 +211,11 @@ class Bot(commands.Bot):
       await chn.send("Done.")
 
   async def check_user(self, user, channel):
+    print(type(user))
+    user = await user.user() if type(user) == twitchio.chatter.Chatter else user
     if user.name not in [u.name for u in Bot.SEEN_USER]:
-        newUserAge = getUserAge(user.name)
+        print(datetime.now(timezone.utc), user.created_at)
+        newUserAge = int(round((datetime.now(timezone.utc) - user.created_at).total_seconds()))
 
         try:
           print("CHANN ", channel, channel.name)
